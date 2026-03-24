@@ -1,0 +1,51 @@
+services:
+  threat-recommendation-engine:
+    build: .
+    container_name: threat-recommendation-engine
+    ports:
+      - "8000:8000"
+    environment:
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-25}
+      SMTP_SENDER: ${SMTP_SENDER:-soc-automation@example.local}
+      SMTP_USERNAME: ${SMTP_USERNAME:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      AI_PROVIDER: ${AI_PROVIDER:-ollama}
+      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://ollama:11434}
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-llama3.1:8b}
+      AI_TIMEOUT_SECONDS: ${AI_TIMEOUT_SECONDS:-30}
+    depends_on:
+      ollama:
+        condition: service_healthy
+      ollama-init:
+        condition: service_completed_successfully
+
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+
+  ollama-init:
+    image: curlimages/curl:8.12.1
+    container_name: ollama-init
+    depends_on:
+      ollama:
+        condition: service_healthy
+    entrypoint:
+      - sh
+      - -c
+      - |
+        curl -fsS -H 'Content-Type: application/json' http://ollama:11434/api/pull -d '{"name":"'"$${OLLAMA_MODEL:-llama3.1:8b}"'","stream":false}'
+    environment:
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-llama3.1:8b}
+
+volumes:
+  ollama_data:

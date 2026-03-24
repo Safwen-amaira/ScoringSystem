@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Threat Recommendation Engine</title>
+    <link rel="stylesheet" href="/assets/styles.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <section class="hero">
+        <p class="eyebrow">Security Automation</p>
+        <h1>Recommendation and scoring for live SOC workflows</h1>
+        <p class="lede">
+          Submit Wazuh alerts, MISP enrichment, and Cortex analysis to get an immediate threat score,
+          a workflow decision, and an email-ready recommendation.
+        </p>
+      </section>
+
+      <section class="panel">
+        <form id="score-form">
+          <h2>Raw JSON Input</h2>
+          <p class="lede">
+            Paste raw Wazuh, MISP, or Cortex JSON here. If any raw JSON is provided, the app will normalize it,
+            extract IOCs, calculate PKIs, score it, and generate the recommendation automatically.
+          </p>
+          <label>
+            Wazuh alert JSON
+            <textarea name="raw_wazuh_json" placeholder='{"rule":{"level":12,"description":"..."}}'></textarea>
+          </label>
+          <label>
+            MISP event JSON
+            <textarea name="raw_misp_json" placeholder='{"Event":{"info":"...","threat_level_id":"1"}}'></textarea>
+          </label>
+          <label>
+            Cortex analysis JSON
+            <textarea name="raw_cortex_json" placeholder='{"analyzerName":"VirusTotal","summary":{"taxonomies":[]}}'></textarea>
+          </label>
+
+          <div class="grid two">
+            <label>
+              Case title
+              <input name="title" value="Suspicious endpoint behavior" required />
+            </label>
+            <label>
+              Asset name
+              <input name="asset_name" value="srv-finance-01" required />
+            </label>
+          </div>
+
+          <div class="grid two">
+            <label>
+              Workflow ID
+              <input name="workflow_id" value="wf-2026-03124" />
+            </label>
+            <label>
+              Analyst email
+              <input name="analyst_email" placeholder="soc@example.com" />
+            </label>
+          </div>
+
+          <h2>Wazuh</h2>
+          <div class="grid two">
+            <label>
+              Rule level
+              <input type="number" name="wazuh_rule_level" min="0" max="20" value="12" />
+            </label>
+            <label>
+              Source IP
+              <input name="wazuh_source_ip" value="10.50.10.8" />
+            </label>
+          </div>
+          <label>
+            Rule description
+            <input name="wazuh_rule_description" value="Multiple authentication failures followed by privilege escalation" />
+          </label>
+          <label>
+            Groups
+            <input name="wazuh_groups" value="authentication_failed, privilege_escalation, malware" />
+          </label>
+
+          <h2>MISP</h2>
+          <div class="grid two">
+            <label>
+              Threat level ID
+              <input type="number" name="misp_threat_level_id" min="1" max="4" value="1" />
+            </label>
+            <label>
+              Attribute count
+              <input type="number" name="misp_attribute_count" min="0" value="6" />
+            </label>
+          </div>
+          <label>
+            Event info
+            <input name="misp_event_info" value="Indicators linked to credential theft campaign" />
+          </label>
+          <label>
+            Tags
+            <input name="misp_tags" value="tlp:amber, ransomware, phishing" />
+          </label>
+          <label class="checkbox">
+            <input type="checkbox" name="misp_known_bad_indicator" checked />
+            Known bad indicator matched
+          </label>
+
+          <h2>Cortex</h2>
+          <div class="grid two">
+            <label>
+              Analyzer
+              <input name="cortex_analyzer_name" value="VirusTotal Analyzer" />
+            </label>
+            <label>
+              Verdict
+              <select name="cortex_verdict">
+                <option value="malicious" selected>malicious</option>
+                <option value="suspicious">suspicious</option>
+                <option value="unknown">unknown</option>
+                <option value="safe">safe</option>
+              </select>
+            </label>
+          </div>
+          <div class="grid two">
+            <label>
+              Flagged artifacts
+              <input type="number" name="cortex_artifacts_flagged" min="0" value="4" />
+            </label>
+            <label>
+              Taxonomies
+              <input name="cortex_taxonomies" value="tlp:red, malware, confidence:high" />
+            </label>
+          </div>
+          <label>
+            Summary
+            <textarea name="cortex_summary">Multiple engines reported a known credential theft family.</textarea>
+          </label>
+
+          <label>
+            Analyst notes
+            <textarea name="notes">Finance server is part of a sensitive workflow. Escalate if score remains above stop threshold.</textarea>
+          </label>
+
+          <div class="actions">
+            <button type="submit">Score Case</button>
+          </div>
+        </form>
+      </section>
+
+      <section class="panel result" id="result-panel">
+        <div class="result-head">
+          <div>
+            <p class="eyebrow">Decision</p>
+            <h2 id="decision">Waiting for input</h2>
+            <p class="provider" id="provider">Recommendation engine: rules fallback</p>
+          </div>
+          <div class="score-pill" id="score-pill">0</div>
+        </div>
+        <p id="summary">Submit a case to generate a recommendation.</p>
+        <div id="breakdown"></div>
+        <h3>IOCs</h3>
+        <pre id="ioc-body"></pre>
+        <h3>PKIs</h3>
+        <pre id="pki-body"></pre>
+        <h3>Email HTML JSON payload</h3>
+        <pre id="mail-body"></pre>
+      </section>
+    </main>
+
+    <script src="/assets/app.js"></script>
+  </body>
+</html>

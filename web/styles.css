@@ -1,0 +1,195 @@
+:root {
+  --bg: #09111b;
+  --panel: rgba(10, 21, 33, 0.82);
+  --panel-strong: #112438;
+  --text: #ecf5ff;
+  --muted: #9cb5c9;
+  --line: rgba(157, 194, 225, 0.18);
+  --accent: #5fe3c1;
+  --warn: #ffca5f;
+  --danger: #ff6f61;
+  --shadow: 0 24px 60px rgba(0, 0, 0, 0.35);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  color: var(--text);
+  background:
+    radial-gradient(circle at top left, rgba(95, 227, 193, 0.2), transparent 30%),
+    radial-gradient(circle at top right, rgba(255, 111, 97, 0.18), transparent 25%),
+    linear-gradient(160deg, #061019 0%, #0d1824 45%, #09111b 100%);
+  min-height: 100vh;
+}
+
+.shell {
+  width: min(1180px, calc(100% - 2rem));
+  margin: 0 auto;
+  padding: 3rem 0 4rem;
+}
+
+.hero {
+  margin-bottom: 2rem;
+}
+
+.eyebrow {
+  color: var(--accent);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  font-size: 0.78rem;
+}
+
+h1,
+h2,
+h3,
+p {
+  margin-top: 0;
+}
+
+h1 {
+  font-size: clamp(2.3rem, 4vw, 4.2rem);
+  max-width: 12ch;
+  line-height: 0.95;
+  margin-bottom: 1rem;
+}
+
+.lede {
+  max-width: 70ch;
+  color: var(--muted);
+  font-size: 1.05rem;
+}
+
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 24px;
+  padding: 1.4rem;
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(16px);
+  margin-bottom: 1.5rem;
+}
+
+form h2 {
+  margin: 1.6rem 0 0.9rem;
+}
+
+.grid {
+  display: grid;
+  gap: 1rem;
+}
+
+.grid.two {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+label {
+  display: grid;
+  gap: 0.45rem;
+  margin-bottom: 1rem;
+  color: var(--muted);
+}
+
+input,
+textarea,
+select,
+button {
+  font: inherit;
+}
+
+input,
+textarea,
+select {
+  width: 100%;
+  border-radius: 14px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--text);
+  padding: 0.85rem 1rem;
+}
+
+textarea {
+  min-height: 110px;
+  resize: vertical;
+}
+
+.checkbox {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+}
+
+.checkbox input {
+  width: 18px;
+  height: 18px;
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+button {
+  border: 0;
+  border-radius: 999px;
+  padding: 0.9rem 1.4rem;
+  background: linear-gradient(135deg, var(--accent), #86f0ff);
+  color: #082236;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.result-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: center;
+}
+
+.score-pill {
+  width: 88px;
+  height: 88px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 1.8rem;
+  font-weight: 800;
+  background: linear-gradient(160deg, rgba(95, 227, 193, 0.18), rgba(255, 111, 97, 0.18));
+  border: 1px solid var(--line);
+}
+
+.provider {
+  color: var(--muted);
+  margin-top: 0.3rem;
+}
+
+.breakdown-card {
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  padding: 1rem;
+  margin: 0.8rem 0;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+pre {
+  white-space: pre-wrap;
+  background: var(--panel-strong);
+  border-radius: 18px;
+  padding: 1rem;
+  border: 1px solid var(--line);
+  color: #d9ebfb;
+}
+
+@media (max-width: 800px) {
+  .grid.two {
+    grid-template-columns: 1fr;
+  }
+
+  .result-head {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
