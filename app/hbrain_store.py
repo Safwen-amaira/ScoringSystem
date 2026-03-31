@@ -181,6 +181,12 @@ def mark_notification_read(notification_id: int) -> None:
         connection.commit()
 
 
+def mark_all_notifications_read() -> None:
+    with get_connection() as connection:
+        connection.execute("UPDATE notifications SET is_read = 1 WHERE is_read = 0")
+        connection.commit()
+
+
 def store_wazuh_alert(source_id: str, title: str, severity: str, raw_payload: dict[str, Any]) -> int:
     with get_connection() as connection:
         existing = connection.execute("SELECT id FROM wazuh_alerts WHERE source_id = ? ORDER BY id DESC LIMIT 1", (source_id,)).fetchone()

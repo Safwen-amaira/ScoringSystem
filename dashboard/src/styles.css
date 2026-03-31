@@ -81,7 +81,8 @@ label, .input-lock { display: grid; gap: 0.45rem; color: var(--muted); }
   border: 1px solid var(--line); box-shadow: var(--shadow);
 }
 .scrollable-dropdown { max-height: 340px; overflow-y: auto; }
-.dropdown-header { display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; color: var(--muted); padding: 0 0.15rem 0.35rem; }
+.dropdown-header { display: flex; justify-content: space-between; align-items: center; gap: 1rem; color: var(--muted); padding: 0 0.15rem 0.35rem; }
+.tiny-button { padding: 0.45rem 0.7rem; font-size: 0.8rem; background: #14161a; color: var(--text); border: 1px solid var(--line); }
 .notification-item {
   text-align: left; background: #121418; color: var(--text); border: 1px solid var(--line-soft);
 }
@@ -119,9 +120,10 @@ label, .input-lock { display: grid; gap: 0.45rem; color: var(--muted); }
 .chart-hitbox { fill: transparent; }
 .chart-x-label { fill: #7f8793; font-size: 10px; }
 .chart-tooltip {
-  position: absolute; top: 1rem; left: 1rem; display: grid; gap: 0.1rem; padding: 0.6rem 0.8rem;
-  border-radius: 12px; background: rgba(17, 18, 20, 0.92); border: 1px solid var(--line);
+  position: absolute; display: grid; gap: 0.1rem; padding: 0.6rem 0.8rem;
+  border-radius: 12px; background: rgba(17, 18, 20, 0.96); border: 1px solid var(--line); pointer-events: none;
 }
+.chart-tooltip.floating { transform: translate(-50%, -100%); }
 .chart-tooltip span { color: var(--muted); font-size: 0.85rem; }
 .chart-tooltip strong::before { content: "Score: "; color: var(--muted); font-weight: 500; }
 .summary-stack { display: grid; gap: 1rem; }
@@ -140,12 +142,13 @@ label, .input-lock { display: grid; gap: 0.45rem; color: var(--muted); }
 }
 .ring-meter span { color: var(--muted); }
 .ring-meter strong { font-size: 1.6rem; }
-.enhanced { grid-template-columns: repeat(10, 15px); grid-auto-rows: 15px; gap: 0.35rem; justify-content: start; }
+.enhanced { grid-template-columns: repeat(20, 15px); grid-auto-rows: 15px; gap: 0.35rem; justify-content: start; }
 .heatmap-cell {
   width: 15px; height: 15px; border-radius: 4px; border: 1px solid rgba(255,255,255,0.08);
   padding: 0; background: #2f855a; transition: transform 0.14s ease, border-color 0.14s ease;
 }
 .heatmap-cell:hover { transform: scale(1.18); border-color: rgba(255,255,255,0.4); }
+.heatmap-panel { width: fit-content; max-width: 100%; }
 .severity-legend { grid-template-columns: repeat(2, minmax(0, 1fr)); margin-top: 1rem; }
 .severity-legend.compact span { text-transform: capitalize; }
 .severity-legend span { display: flex; align-items: center; gap: 0.5rem; color: var(--muted); }

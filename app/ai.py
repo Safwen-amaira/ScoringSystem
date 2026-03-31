@@ -17,7 +17,7 @@ class AIRecommendationService:
         self.ollama_url = os.getenv("OLLAMA_BASE_URL", "http://ollama:11434")
         self.ollama_model = os.getenv("OLLAMA_MODEL", "llama3.1:8b")
         self.timeout = int(os.getenv("AI_TIMEOUT_SECONDS", "30"))
-        self.chat_timeout = int(os.getenv("AI_CHAT_TIMEOUT_SECONDS", "10"))
+        self.chat_timeout = int(os.getenv("AI_CHAT_TIMEOUT_SECONDS", "6"))
         self.summary_prompt = (base_dir / "agents" / "security_summary.md").read_text(encoding="utf-8")
         self.email_prompt = (base_dir / "agents" / "email_html.md").read_text(encoding="utf-8")
 
@@ -63,10 +63,7 @@ class AIRecommendationService:
             except Exception:
                 pass
         if messages:
-            return (
-                "H-Brain here. Share the alert, IOC, case context, or investigation goal, "
-                "and I will help with triage, enrichment, scoring, containment, and response actions."
-            )
+            return self._fallback_chat_response(messages[-1]["content"])
         return (
             "H-Brain here. I am the cybersecurity assistant developed by Hanicar Security, "
             "the Tunisian cybersecurity company. Ask me about incident response, CTI, "
@@ -242,3 +239,32 @@ class AIRecommendationService:
             "endpoint_criticality": 5 if any(token in text for token in ["swift", "payment", "core", "issuer", "merchant"]) else 3,
             "alert_volume": 6 if any(token in text for token in ["multiple", "burst", "campaign"]) else 3,
         }
+
+    def _fallback_chat_response(self, user_message: str) -> str:
+        text = user_message.strip().lower()
+        if not text:
+            return "H-Brain here. Share the alert, IOC, case context, or investigation goal, and I will help with triage, enrichment, scoring, containment, and response actions."
+        if any(token in text for token in ["who developed", "who made", "who are you", "developer", "developed you", "made you"]):
+            return "H-Brain was developed by Hanicar Security, the Tunisian cybersecurity company. If you need the website, it is https://hanicar.tn."
+        if any(token in text for token in ["what is cve", "what are cves", "cves mean", "cve mean"]):
+            return "CVE means Common Vulnerabilities and Exposures. It is a public identifier for a known security flaw, like CVE-2024-3400. In SOC work, CVEs help us map alerts to known vulnerabilities, assess exposure, prioritize patching, and explain risk to analysts and management."
+        if "mitre" in text or "attack" in text:
+            return "MITRE ATT&CK is a knowledge base of adversary tactics and techniques. In practice, we use it to map incidents to behaviors such as Initial Access, Execution, Lateral Movement, and Exfiltration so analysts can understand what stage of the intrusion they are dealing with."
+        if "ioc" in text or "indicator" in text:
+            return "An IOC is an Indicator of Compromise, such as a malicious IP, domain, hash, URL, email, filename, or registry key. In triage, we extract IOCs from Wazuh, MISP, and Cortex outputs to pivot, enrich, block, and hunt for related activity."
+        if "wazuh" in text:
+            return "Wazuh is your detection source. It gives raw alerts, rule levels, agent context, groups, and event fields. In H-Brain, Wazuh alerts are used for immediate signal scoring, incident creation, IOC extraction, and workflow decisions."
+        if "misp" in text:
+            return "MISP is your threat intelligence source. It provides events, attributes, tags, threat levels, and known-bad indicators. In H-Brain, MISP enrichment boosts confidence in malicious infrastructure, links alerts to campaigns, and improves recommendation quality."
+        if "cortex" in text:
+            return "Cortex is your analysis layer. It runs analyzers such as VirusTotal-style lookups and returns verdicts like malicious, suspicious, or safe. In H-Brain, Cortex is treated as a strong signal, especially when it confirms malicious artifacts."
+        if "iris" in text:
+            return "IRIS is your case management layer. It helps you track incidents, evidence, tasks, and response progress. In H-Brain, incidents can be linked to IRIS cases so analysts can move from detection to investigation and containment without losing context."
+        if any(token in text for token in ["score", "scoring", "how score", "risk score"]):
+            return "H-Brain uses a hybrid banking-oriented scoring model: deterministic SOC rules plus machine learning refinement. Strong signals such as malicious Cortex verdicts, known-bad indicators, lateral movement, exfiltration, repeated alerts, and banking asset criticality drive the final score and the decision to continue, review, or stop the workflow."
+        if any(token in text for token in ["contain", "containment", "response", "incident response"]):
+            return "For containment, start with the highest-confidence signals: isolate affected assets, block malicious IOCs, disable exposed credentials, validate lateral movement paths, preserve evidence, and map the event to MITRE ATT&CK so the response playbook matches the intrusion stage."
+        return (
+            "H-Brain here. I can help with CTI, incident response, Wazuh, MISP, Cortex, IRIS, MITRE ATT&CK, scoring, containment, and banking SOC workflows. "
+            "Share the alert, question, or case details and I will respond with operational guidance."
+        )

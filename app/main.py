@@ -33,6 +33,7 @@ from .hbrain_store import (
     list_mitre,
     list_notifications,
     mark_notification_read,
+    mark_all_notifications_read,
     store_cortex_job,
     store_misp_event,
     store_wazuh_alert,
@@ -376,6 +377,12 @@ def api_notifications(_: dict = Depends(_current_user)) -> NotificationListRespo
 @app.post("/api/dashboard/notifications/{notification_id}/read")
 def api_notification_read(notification_id: int, _: dict = Depends(_current_user)) -> dict[str, str]:
     mark_notification_read(notification_id)
+    return {"status": "ok"}
+
+
+@app.post("/api/dashboard/notifications/read-all")
+def api_notifications_read_all(_: dict = Depends(_current_user)) -> dict[str, str]:
+    mark_all_notifications_read()
     return {"status": "ok"}
 
 
