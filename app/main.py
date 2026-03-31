@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 import os
 from pathlib import Path
 
@@ -9,13 +10,61 @@ from fastapi.staticfiles import StaticFiles
 
 from .ai import AIRecommendationService
 from .cve import extract_cve_ids
-from .db import dashboard_overview, ensure_cves, get_case, init_db, list_cases, list_cves, login, require_session, seed_demo_case, store_case, sync_recent_cves
+from .db import (
+    dashboard_overview,
+    ensure_cves,
+    get_case,
+    init_db,
+    list_cases,
+    list_cves,
+    login,
+    require_session,
+    seed_demo_case,
+    store_case,
+    sync_recent_cves,
+)
 from .emailer import send_recommendation_mail
+from .hbrain_store import (
+    create_notification,
+    get_settings,
+    init_hbrain_store,
+    list_external_items,
+    list_iris_cases,
+    list_mitre,
+    list_notifications,
+    mark_notification_read,
+    sync_cortex_from_settings,
+    sync_iris_from_settings,
+    sync_misp_from_settings,
+    sync_mitre_techniques,
+    update_settings,
+)
 from .ingestion import compute_pkis, extract_iocs, normalize_raw_request
-from .models import CVEListResponse, DashboardCaseDetail, DashboardCaseListResponse, DashboardOverview, EmailContentResponse, LoginRequest, LoginResponse, RawIntelligenceRequest, RecommendationResponse, ScoreResponse, ScoringRequest
+from .mitre import match_techniques
+from .models import (
+    CVEListResponse,
+    DashboardCaseDetail,
+    DashboardCaseListResponse,
+    DashboardOverview,
+    EmailContentResponse,
+    ExternalItemListResponse,
+    LoginRequest,
+    LoginResponse,
+    MitreTechniqueListResponse,
+    NotificationListResponse,
+    RawIntelligenceRequest,
+    RecommendationResponse,
+    ScoreResponse,
+    ScoringRequest,
+    SettingsResponse,
+    SettingsUpdateRequest,
+    WazuhAlertIngestRequest,
+)
+from .score_model import ensure_training_dataset, get_score_model
 from .scoring import build_recommendation
 
-app = FastAPI(title="Threat Recommendation Engine", version="0.1.0")
+
+app = FastAPI(title="Hanicar H-Brain", version="0.2.0")
 ai_service = AIRecommendationService()
 
 allowed_origins = [origin.strip() for origin in os.getenv("HANICAR_DASHBOARD_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173").split(",") if origin.strip()]
@@ -34,7 +83,11 @@ app.mount("/assets", StaticFiles(directory=static_dir), name="assets")
 @app.on_event("startup")
 def startup() -> None:
     init_db()
+    init_hbrain_store()
     sync_recent_cves()
+    sync_mitre_techniques()
+    ensure_training_dataset()
+    get_score_model()
     seed_demo_case()
 
 
@@ -57,12 +110,47 @@ def _current_user(authorization: str | None = Header(default=None)) -> dict:
     return user
 
 
-def _build_full_result(request: ScoringRequest) -> RecommendationResponse:
-    result = build_recommendation(request)
+def _combined_text(raw_request: RawIntelligenceRequest, normalized_request: ScoringRequest) -> str:
+    return " ".join(
+        filter(
+            None,
+            [
+                normalized_request.title,
+                normalized_request.asset_name,
+                normalized_request.workflow_id or "",
+                normalized_request.notes or "",
+                raw_request.iris_case_name or "",
+                str(raw_request.wazuh_alert or ""),
+                str(raw_request.misp_event or ""),
+                str(raw_request.cortex_analysis or ""),
+            ],
+        )
+    )
+
+
+def _score_response(result: RecommendationResponse) -> ScoreResponse:
+    return ScoreResponse(
+        score=result.score,
+        decision=result.decision,
+        allow_workflow_to_continue=result.allow_workflow_to_continue,
+        summary=result.summary,
+        ai_generated=result.ai_generated,
+        ai_provider=result.ai_provider,
+        score_model=result.score_model,
+        workflow_playbook=result.workflow_playbook,
+        breakdown=result.breakdown,
+        evidence=result.evidence,
+        iocs=result.iocs,
+        pkis=result.pkis,
+    )
+
+
+def _build_full_result(request: ScoringRequest, cve_count: int = 0) -> RecommendationResponse:
+    ai_features = ai_service.extract_score_features(request)
+    result = build_recommendation(request, ai_features=ai_features, cve_count=cve_count)
     summary, body, ai_generated, ai_provider = ai_service.enrich_recommendation(request, result)
     result.iocs = extract_iocs(request.model_dump())
     result.pkis = compute_pkis(request, result.iocs)
-
     result.summary = summary
     result.recommendation_body = body
     result.ai_generated = ai_generated
@@ -71,11 +159,12 @@ def _build_full_result(request: ScoringRequest) -> RecommendationResponse:
 
 
 def _normalize_raw(request: RawIntelligenceRequest) -> tuple[ScoringRequest, RecommendationResponse, list[dict]]:
+    cve_ids = extract_cve_ids(request.model_dump())
+    cve_rows = ensure_cves(cve_ids)
     normalized_request, iocs, pkis = normalize_raw_request(request)
-    result = _build_full_result(normalized_request)
+    result = _build_full_result(normalized_request, cve_count=len(cve_rows))
     result.iocs = iocs
     result.pkis = pkis
-    cve_rows = ensure_cves(extract_cve_ids(request.model_dump()))
     return normalized_request, result, cve_rows
 
 
@@ -92,7 +181,7 @@ def _email_payload(request: ScoringRequest, result: RecommendationResponse) -> E
 
 def _store_raw_case(raw_request: RawIntelligenceRequest, normalized_request: ScoringRequest, result: RecommendationResponse, cve_rows: list[dict]) -> int:
     email_payload = _email_payload(normalized_request, result)
-    return store_case(
+    case_id = store_case(
         raw_payload=raw_request.model_dump(),
         normalized_request=normalized_request,
         result=result,
@@ -100,6 +189,14 @@ def _store_raw_case(raw_request: RawIntelligenceRequest, normalized_request: Sco
         cve_ids=[item["cve_id"] for item in cve_rows],
         iris_case_name=raw_request.iris_case_name,
     )
+    techniques, _ = list_mitre(page=1, page_size=1000, search=None)
+    for technique in match_techniques(techniques, _combined_text(raw_request, normalized_request)):
+        from .hbrain_store import link_case_mitre
+
+        link_case_mitre(case_id, [technique["external_id"]])
+    if result.decision in {"stop", "review"}:
+        create_notification(case_id, result.recommendation_subject, "critical" if result.decision == "stop" else "high", result.summary)
+    return case_id
 
 
 @app.post("/api/auth/login", response_model=LoginResponse)
@@ -112,19 +209,7 @@ def auth_login(request: LoginRequest) -> LoginResponse:
 
 @app.post("/api/score", response_model=ScoreResponse)
 def score(request: ScoringRequest) -> ScoreResponse:
-    result = _build_full_result(request)
-    return ScoreResponse(
-        score=result.score,
-        decision=result.decision,
-        allow_workflow_to_continue=result.allow_workflow_to_continue,
-        summary=result.summary,
-        ai_generated=result.ai_generated,
-        ai_provider=result.ai_provider,
-        breakdown=result.breakdown,
-        evidence=result.evidence,
-        iocs=result.iocs,
-        pkis=result.pkis,
-    )
+    return _score_response(_build_full_result(request))
 
 
 @app.post("/api/email-content", response_model=EmailContentResponse)
@@ -142,18 +227,7 @@ def analyze(request: ScoringRequest) -> RecommendationResponse:
 def score_raw(request: RawIntelligenceRequest) -> ScoreResponse:
     normalized_request, result, cve_rows = _normalize_raw(request)
     _store_raw_case(request, normalized_request, result, cve_rows)
-    return ScoreResponse(
-        score=result.score,
-        decision=result.decision,
-        allow_workflow_to_continue=result.allow_workflow_to_continue,
-        summary=result.summary,
-        ai_generated=result.ai_generated,
-        ai_provider=result.ai_provider,
-        breakdown=result.breakdown,
-        evidence=result.evidence,
-        iocs=result.iocs,
-        pkis=result.pkis,
-    )
+    return _score_response(result)
 
 
 @app.post("/api/recommendation", response_model=RecommendationResponse)
@@ -181,30 +255,25 @@ def score_and_email(request: ScoringRequest) -> dict:
             response.recommendation_body,
             email_payload.html,
         )
-    except Exception as exc:  # pragma: no cover - defensive surface for external SMTP issues
+    except Exception as exc:  # pragma: no cover
         raise HTTPException(status_code=502, detail=f"Email dispatch failed: {exc}") from exc
 
-    return {
-        "score": ScoreResponse(
-            score=response.score,
-            decision=response.decision,
-            allow_workflow_to_continue=response.allow_workflow_to_continue,
-            summary=response.summary,
-            ai_generated=response.ai_generated,
-            ai_provider=response.ai_provider,
-            breakdown=response.breakdown,
-            evidence=response.evidence,
-            iocs=response.iocs,
-            pkis=response.pkis,
-        ).model_dump(),
-        "email": email_payload.model_dump(),
-        "email_sent": sent,
-    }
+    return {"score": _score_response(response).model_dump(), "email": email_payload.model_dump(), "email_sent": sent}
 
 
 @app.get("/api/dashboard/overview", response_model=DashboardOverview)
 def api_dashboard_overview(_: dict = Depends(_current_user)) -> DashboardOverview:
-    return dashboard_overview()
+    overview = dashboard_overview()
+    notifications, unread = list_notifications()
+    return DashboardOverview(
+        total_cases=overview.total_cases,
+        critical_cases=overview.critical_cases,
+        average_score=overview.average_score,
+        open_stop_cases=overview.open_stop_cases,
+        cve_matches=overview.cve_matches,
+        unread_notifications=unread,
+        latest_cases=overview.latest_cases,
+    )
 
 
 @app.get("/api/dashboard/cases", response_model=DashboardCaseListResponse)
@@ -217,6 +286,7 @@ def api_dashboard_cases(
     search: str | None = None,
     _: dict = Depends(_current_user),
 ) -> DashboardCaseListResponse:
+    page_size = min(max(page_size, 1), 100)
     items, total = list_cases(page=page, page_size=page_size, severity=severity, decision=decision, min_score=min_score, search=search)
     return DashboardCaseListResponse(items=items, total=total, page=page, page_size=page_size)
 
@@ -229,17 +299,6 @@ def api_dashboard_case(case_id: int, _: dict = Depends(_current_user)) -> Dashbo
     return detail
 
 
-@app.get("/api/dashboard/cves", response_model=CVEListResponse)
-def api_dashboard_cves(
-    page: int = 1,
-    page_size: int = 12,
-    search: str | None = None,
-    _: dict = Depends(_current_user),
-) -> CVEListResponse:
-    items, total = list_cves(page=page, page_size=page_size, search=search)
-    return CVEListResponse(items=items, total=total, page=page, page_size=page_size)
-
-
 @app.post("/api/dashboard/cases/ingest", response_model=DashboardCaseDetail)
 def api_dashboard_ingest(request: RawIntelligenceRequest, _: dict = Depends(_current_user)) -> DashboardCaseDetail:
     normalized_request, result, cve_rows = _normalize_raw(request)
@@ -248,3 +307,147 @@ def api_dashboard_ingest(request: RawIntelligenceRequest, _: dict = Depends(_cur
     if not detail:
         raise HTTPException(status_code=500, detail="Stored case could not be loaded")
     return detail
+
+
+@app.get("/api/dashboard/cves", response_model=CVEListResponse)
+def api_dashboard_cves(
+    page: int = 1,
+    page_size: int = 12,
+    search: str | None = None,
+    _: dict = Depends(_current_user),
+) -> CVEListResponse:
+    page_size = min(max(page_size, 1), 100)
+    items, total = list_cves(page=page, page_size=page_size, search=search)
+    return CVEListResponse(items=items, total=total, page=page, page_size=page_size)
+
+
+@app.get("/api/dashboard/notifications", response_model=NotificationListResponse)
+def api_notifications(_: dict = Depends(_current_user)) -> NotificationListResponse:
+    items, total = list_notifications()
+    return NotificationListResponse(items=items, total=total)
+
+
+@app.post("/api/dashboard/notifications/{notification_id}/read")
+def api_notification_read(notification_id: int, _: dict = Depends(_current_user)) -> dict[str, str]:
+    mark_notification_read(notification_id)
+    return {"status": "ok"}
+
+
+@app.get("/api/dashboard/settings", response_model=SettingsResponse)
+def api_settings(_: dict = Depends(_current_user)) -> SettingsResponse:
+    return get_settings()
+
+
+@app.post("/api/dashboard/settings", response_model=SettingsResponse)
+def api_settings_update(request: SettingsUpdateRequest, user: dict = Depends(_current_user)) -> SettingsResponse:
+    try:
+        return update_settings(user["email"], request.model_dump(exclude_none=True))
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.post("/api/integrations/wazuh/alerts")
+def api_wazuh_alert_ingest(request: WazuhAlertIngestRequest) -> dict:
+    title = request.title or request.wazuh_alert.get("rule", {}).get("description") or "Wazuh alert"
+    severity_value = request.wazuh_alert.get("rule", {}).get("level", 5)
+    severity = "critical" if severity_value >= 14 else "high" if severity_value >= 10 else "medium" if severity_value >= 6 else "low"
+    from .hbrain_store import store_wazuh_alert
+
+    alert_id = store_wazuh_alert(
+        source_id=str(request.wazuh_alert.get("id") or request.wazuh_alert.get("_id") or title),
+        title=title,
+        severity=severity,
+        raw_payload=request.wazuh_alert,
+    )
+    case_id = None
+    if request.auto_create_incident:
+        raw_request = RawIntelligenceRequest(
+            title=title,
+            iris_case_name=request.iris_case_name,
+            asset_name=request.asset_name or request.wazuh_alert.get("agent", {}).get("name") or "unknown-asset",
+            workflow_id=request.workflow_id,
+            wazuh_alert=request.wazuh_alert,
+            notes=request.notes,
+            source="wazuh",
+        )
+        normalized_request, result, cve_rows = _normalize_raw(raw_request)
+        case_id = _store_raw_case(raw_request, normalized_request, result, cve_rows)
+    if severity in {"critical", "high"}:
+        create_notification(case_id, f"Wazuh {severity} alert", severity, title)
+    return {"status": "ok", "alert_id": alert_id, "case_id": case_id}
+
+
+@app.get("/api/dashboard/wazuh-alerts", response_model=ExternalItemListResponse)
+def api_wazuh_alerts(
+    page: int = 1,
+    page_size: int = 10,
+    severity: str | None = None,
+    _: dict = Depends(_current_user),
+) -> ExternalItemListResponse:
+    items, total = list_external_items("wazuh_alerts", page=page, page_size=min(max(page_size, 1), 100), severity=severity)
+    return ExternalItemListResponse(items=items, total=total, page=page, page_size=min(max(page_size, 1), 100))
+
+
+@app.post("/api/dashboard/misp/sync", response_model=ExternalItemListResponse)
+def api_misp_sync(page_size: int = 10, _: dict = Depends(_current_user)) -> ExternalItemListResponse:
+    sync_misp_from_settings()
+    items, total = list_external_items("misp_events", page=1, page_size=min(max(page_size, 1), 100))
+    return ExternalItemListResponse(items=items, total=total, page=1, page_size=min(max(page_size, 1), 100))
+
+
+@app.get("/api/dashboard/misp/events", response_model=ExternalItemListResponse)
+def api_misp_events(
+    page: int = 1,
+    page_size: int = 10,
+    severity: str | None = None,
+    _: dict = Depends(_current_user),
+) -> ExternalItemListResponse:
+    items, total = list_external_items("misp_events", page=page, page_size=min(max(page_size, 1), 100), severity=severity)
+    return ExternalItemListResponse(items=items, total=total, page=page, page_size=min(max(page_size, 1), 100))
+
+
+@app.post("/api/dashboard/cortex/sync", response_model=ExternalItemListResponse)
+def api_cortex_sync(page_size: int = 10, _: dict = Depends(_current_user)) -> ExternalItemListResponse:
+    sync_cortex_from_settings()
+    items, total = list_external_items("cortex_jobs", page=1, page_size=min(max(page_size, 1), 100))
+    return ExternalItemListResponse(items=items, total=total, page=1, page_size=min(max(page_size, 1), 100))
+
+
+@app.get("/api/dashboard/cortex/jobs", response_model=ExternalItemListResponse)
+def api_cortex_jobs(
+    page: int = 1,
+    page_size: int = 10,
+    severity: str | None = None,
+    _: dict = Depends(_current_user),
+) -> ExternalItemListResponse:
+    items, total = list_external_items("cortex_jobs", page=page, page_size=min(max(page_size, 1), 100), severity=severity)
+    return ExternalItemListResponse(items=items, total=total, page=page, page_size=min(max(page_size, 1), 100))
+
+
+@app.post("/api/dashboard/iris/sync", response_model=ExternalItemListResponse)
+def api_iris_sync(page_size: int = 10, _: dict = Depends(_current_user)) -> ExternalItemListResponse:
+    sync_iris_from_settings()
+    items, total = list_iris_cases(page=1, page_size=min(max(page_size, 1), 100))
+    return ExternalItemListResponse(items=items, total=total, page=1, page_size=min(max(page_size, 1), 100))
+
+
+@app.get("/api/dashboard/iris/cases", response_model=ExternalItemListResponse)
+def api_iris_cases(
+    page: int = 1,
+    page_size: int = 10,
+    severity: str | None = None,
+    _: dict = Depends(_current_user),
+) -> ExternalItemListResponse:
+    items, total = list_iris_cases(page=page, page_size=min(max(page_size, 1), 100), severity=severity)
+    return ExternalItemListResponse(items=items, total=total, page=page, page_size=min(max(page_size, 1), 100))
+
+
+@app.get("/api/dashboard/mitre", response_model=MitreTechniqueListResponse)
+def api_mitre(
+    page: int = 1,
+    page_size: int = 10,
+    search: str | None = None,
+    _: dict = Depends(_current_user),
+) -> MitreTechniqueListResponse:
+    items, total = list_mitre(page=page, page_size=min(max(page_size, 1), 100), search=search)
+    return MitreTechniqueListResponse(items=items, total=total, page=page, page_size=min(max(page_size, 1), 100))

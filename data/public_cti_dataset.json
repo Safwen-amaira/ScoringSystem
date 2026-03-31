@@ -1,0 +1,43 @@
+[
+  {
+    "source": "public-wazuh-sample",
+    "case_name": "Wazuh web attack sample",
+    "source_url": "https://documentation.wazuh.com/current/user-manual/capabilities/log-data-collection/index.html",
+    "wazuh_alert": {
+      "rule": {
+        "level": 12,
+        "description": "Multiple failed logins followed by suspicious privilege escalation referencing CVE-2024-3400",
+        "groups": ["authentication_failed", "privilege_escalation", "web"]
+      },
+      "agent": {"name": "banking-web-01"},
+      "data": {"srcip": "198.51.100.77"}
+    }
+  },
+  {
+    "source": "public-misp-sample",
+    "case_name": "MISP phishing infrastructure sample",
+    "source_url": "https://www.misp-project.org/documentation/",
+    "misp_event": {
+      "Event": {
+        "info": "Credential phishing infrastructure with T1566 overlap",
+        "threat_level_id": "1",
+        "Tag": [{"name": "tlp:amber"}, {"name": "phishing"}],
+        "Attribute": [{"value": "malicious.example"}, {"value": "CVE-2024-3400"}]
+      }
+    }
+  },
+  {
+    "source": "public-cortex-sample",
+    "case_name": "Cortex malicious verdict sample",
+    "source_url": "https://docs.strangebee.com/cortex/",
+    "cortex_analysis": {
+      "analyzerName": "VirusTotal Analyzer",
+      "summary": {
+        "taxonomies": [
+          {"namespace": "VT", "predicate": "malicious", "value": "high"},
+          {"namespace": "ATTACK", "predicate": "technique", "value": "T1190"}
+        ]
+      }
+    }
+  }
+]

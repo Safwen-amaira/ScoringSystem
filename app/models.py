@@ -66,6 +66,7 @@ class RawIntelligenceRequest(BaseModel):
     asset_name: Optional[str] = None
     analyst_email: Optional[str] = None
     workflow_id: Optional[str] = None
+    source: Optional[str] = None
     wazuh_alert: Optional[dict] = None
     misp_event: Optional[dict] = None
     cortex_analysis: Optional[dict] = None
@@ -85,8 +86,10 @@ class RecommendationResponse(BaseModel):
     summary: str
     ai_generated: bool
     ai_provider: str
+    score_model: str = "hbrain-banking-v1"
     recommendation_subject: str
     recommendation_body: str
+    workflow_playbook: str = ""
     breakdown: List[ScoreBreakdown]
     evidence: List[EvidenceItem]
     iocs: List[IOCItem]
@@ -100,6 +103,8 @@ class ScoreResponse(BaseModel):
     summary: str
     ai_generated: bool
     ai_provider: str
+    score_model: str = "hbrain-banking-v1"
+    workflow_playbook: str = ""
     breakdown: List[ScoreBreakdown]
     evidence: List[EvidenceItem]
     iocs: List[IOCItem]
@@ -133,6 +138,8 @@ class DashboardCaseSummary(BaseModel):
     severity: str
     score: int
     decision: str
+    workflow_playbook: str
+    mitre_count: int
     created_at: str
     cve_count: int
     ioc_count: int
@@ -150,10 +157,13 @@ class DashboardCaseDetail(BaseModel):
     summary: str
     recommendation_subject: str
     recommendation_body: str
+    workflow_playbook: str
+    score_model: str = "hbrain-banking-v1"
     created_at: str
     iocs: List[IOCItem]
     pkis: List[PKIMetric]
     cves: List[dict]
+    mitre_attacks: List[dict]
     raw_payload: dict
     normalized_payload: dict
     result_payload: dict
@@ -180,4 +190,87 @@ class DashboardOverview(BaseModel):
     average_score: float
     open_stop_cases: int
     cve_matches: int
+    unread_notifications: int
     latest_cases: List[DashboardCaseSummary]
+
+
+class WazuhAlertIngestRequest(BaseModel):
+    title: Optional[str] = None
+    iris_case_name: Optional[str] = None
+    asset_name: Optional[str] = None
+    workflow_id: Optional[str] = None
+    notes: Optional[str] = None
+    wazuh_alert: dict
+    auto_create_incident: bool = True
+
+
+class ExternalItemResponse(BaseModel):
+    id: int
+    source_id: str
+    title: str
+    severity: str
+    created_at: str
+    raw_payload: dict
+
+
+class ExternalItemListResponse(BaseModel):
+    items: List[ExternalItemResponse]
+    total: int
+    page: int
+    page_size: int
+
+
+class NotificationItem(BaseModel):
+    id: int
+    title: str
+    severity: str
+    created_at: str
+    case_id: Optional[int] = None
+    is_read: bool
+    body: str
+
+
+class NotificationListResponse(BaseModel):
+    items: List[NotificationItem]
+    total: int
+
+
+class SettingsResponse(BaseModel):
+    misp_base_url: str = ""
+    misp_api_key: str = ""
+    cortex_base_url: str = ""
+    cortex_api_key: str = ""
+    iris_base_url: str = ""
+    iris_api_key: str = ""
+    notification_email: str = ""
+    dashboard_email: str = ""
+    ollama_model: str = ""
+    ollama_base_url: str = ""
+
+
+class SettingsUpdateRequest(BaseModel):
+    misp_base_url: Optional[str] = None
+    misp_api_key: Optional[str] = None
+    cortex_base_url: Optional[str] = None
+    cortex_api_key: Optional[str] = None
+    iris_base_url: Optional[str] = None
+    iris_api_key: Optional[str] = None
+    notification_email: Optional[str] = None
+    dashboard_email: Optional[str] = None
+    current_password: Optional[str] = None
+    new_password: Optional[str] = None
+
+
+class MitreTechniqueResponse(BaseModel):
+    external_id: str
+    name: str
+    tactics: List[str]
+    platforms: List[str]
+    url: str
+
+
+class MitreTechniqueListResponse(BaseModel):
+    items: List[MitreTechniqueResponse]
+    total: int
+    page: int
+    page_size: int

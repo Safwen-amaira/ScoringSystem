@@ -262,7 +262,8 @@ def list_cases(page: int, page_size: int, severity: str | None, decision: str | 
             SELECT
                 cases.*,
                 (SELECT COUNT(*) FROM case_cves WHERE case_id = cases.id) AS cve_count,
-                json_array_length(json_extract(result_payload, '$.iocs')) AS ioc_count
+                json_array_length(json_extract(result_payload, '$.iocs')) AS ioc_count,
+                (SELECT COUNT(*) FROM case_mitre WHERE case_id = cases.id) AS mitre_count
             FROM cases
             WHERE {where_clause}
             ORDER BY datetime(created_at) DESC
@@ -287,6 +288,15 @@ def get_case(case_id: int) -> DashboardCaseDetail | None:
             """,
             (case_id,),
         ).fetchall()
+        mitre_rows = connection.execute(
+            """
+            SELECT mitre_techniques.* FROM mitre_techniques
+            JOIN case_mitre ON case_mitre.technique_id = mitre_techniques.external_id
+            WHERE case_mitre.case_id = ?
+            ORDER BY mitre_techniques.external_id ASC
+            """,
+            (case_id,),
+        ).fetchall()
 
     result_payload = json.loads(row["result_payload"])
     return DashboardCaseDetail(
@@ -300,10 +310,24 @@ def get_case(case_id: int) -> DashboardCaseDetail | None:
         summary=row["summary"],
         recommendation_subject=row["recommendation_subject"],
         recommendation_body=row["recommendation_body"],
+        workflow_playbook=result_payload.get("workflow_playbook") or "Security playbook pending",
+        score_model=result_payload.get("score_model") or "hbrain-banking-v1",
         created_at=row["created_at"],
         iocs=result_payload.get("iocs", []),
         pkis=result_payload.get("pkis", []),
         cves=[_cve_row_to_dict(item) for item in cve_rows],
+        mitre_attacks=[
+            {
+                "external_id": item["external_id"],
+                "name": item["name"],
+                "description": item["description"],
+                "tactics": json.loads(item["tactics_json"]),
+                "platforms": json.loads(item["platforms_json"]),
+                "url": item["url"],
+                "detection": item["detection"],
+            }
+            for item in mitre_rows
+        ],
         raw_payload=json.loads(row["raw_payload"]),
         normalized_payload=json.loads(row["normalized_payload"]),
         result_payload=result_payload,
@@ -355,6 +379,7 @@ def dashboard_overview() -> DashboardOverview:
         average_score=round(float(stats["average_score"] or 0.0), 1),
         open_stop_cases=int(stats["open_stop_cases"] or 0),
         cve_matches=int(stats["cve_matches"] or 0),
+        unread_notifications=0,
         latest_cases=latest_cases,
     )
 
@@ -422,6 +447,7 @@ def seed_demo_case() -> None:
 
 
 def _summary_from_row(row: sqlite3.Row) -> DashboardCaseSummary:
+    result_payload = json.loads(row["result_payload"])
     return DashboardCaseSummary(
         id=row["id"],
         case_name=row["case_name"],
@@ -430,6 +456,8 @@ def _summary_from_row(row: sqlite3.Row) -> DashboardCaseSummary:
         severity=row["severity"],
         score=row["score"],
         decision=row["decision"],
+        workflow_playbook=result_payload.get("workflow_playbook") or "Security playbook pending",
+        mitre_count=int(row["mitre_count"] or 0),
         created_at=row["created_at"],
         cve_count=int(row["cve_count"] or 0),
         ioc_count=int(row["ioc_count"] or 0),

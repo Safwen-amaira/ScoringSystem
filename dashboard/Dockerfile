@@ -1,4 +1,4 @@
-FROM node:20-alpine
+FROM node:20-bookworm-slim
 
 WORKDIR /dashboard
 
@@ -9,4 +9,5 @@ COPY . .
 
 EXPOSE 5173
 
+ENTRYPOINT []
 CMD ["npm", "run", "dev"]

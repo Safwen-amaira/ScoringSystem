@@ -36,6 +36,14 @@ class AIRecommendationService:
                 pass
         return self._fallback_email_html(scoring_request, recommendation), False, "file-agent"
 
+    def extract_score_features(self, scoring_request: ScoringRequest) -> dict[str, Any]:
+        if self.provider_name == "ollama":
+            try:
+                return self._ollama_score_features(scoring_request)
+            except Exception:
+                pass
+        return self._fallback_score_features(scoring_request)
+
     def _ollama_recommendation(self, scoring_request: ScoringRequest, draft: RecommendationResponse) -> tuple[str, str, bool, str]:
         schema = {
             "type": "object",
@@ -74,6 +82,27 @@ class AIRecommendationService:
         )
         result = self._call_ollama(prompt, schema)
         return result["html"], True, "ollama"
+
+    def _ollama_score_features(self, scoring_request: ScoringRequest) -> dict[str, Any]:
+        schema = {
+            "type": "object",
+            "properties": {
+                "confidence": {"type": "number"},
+                "banking_context": {"type": "boolean"},
+                "customer_impact": {"type": "boolean"},
+                "external_exposure": {"type": "boolean"},
+                "credential_risk": {"type": "boolean"},
+            },
+            "required": ["confidence", "banking_context", "customer_impact", "external_exposure", "credential_risk"],
+            "additionalProperties": False,
+        }
+        prompt = json.dumps(
+            {
+                "instruction": "Extract only structured scoring hints for a banking CTI scoring model.",
+                "case": scoring_request.model_dump(),
+            }
+        )
+        return self._call_ollama(prompt, schema)
 
     def _call_ollama(self, prompt: str, schema: dict[str, Any]) -> dict[str, Any]:
         endpoint = f"{self.ollama_url.rstrip('/')}/api/generate"
@@ -136,3 +165,25 @@ class AIRecommendationService:
         if not actions:
             actions.append("Review the recommendation body for operational next steps.")
         return actions
+
+    def _fallback_score_features(self, scoring_request: ScoringRequest) -> dict[str, Any]:
+        text = " ".join(
+            filter(
+                None,
+                [
+                    scoring_request.title,
+                    scoring_request.asset_name,
+                    scoring_request.workflow_id or "",
+                    scoring_request.notes or "",
+                    scoring_request.misp_enrichment.event_info if scoring_request.misp_enrichment else "",
+                    scoring_request.cortex_analysis.summary if scoring_request.cortex_analysis and scoring_request.cortex_analysis.summary else "",
+                ],
+            )
+        ).lower()
+        return {
+            "confidence": 0.74,
+            "banking_context": any(token in text for token in ["bank", "payment", "pci", "swift", "card"]),
+            "customer_impact": any(token in text for token in ["customer", "account", "identity"]),
+            "external_exposure": any(token in text for token in ["external", "internet", "public", "edge"]),
+            "credential_risk": any(token in text for token in ["credential", "password", "authentication", "login"]),
+        }
