@@ -17,6 +17,7 @@ class AIRecommendationService:
         self.ollama_url = os.getenv("OLLAMA_BASE_URL", "http://ollama:11434")
         self.ollama_model = os.getenv("OLLAMA_MODEL", "llama3.1:8b")
         self.timeout = int(os.getenv("AI_TIMEOUT_SECONDS", "30"))
+        self.chat_timeout = int(os.getenv("AI_CHAT_TIMEOUT_SECONDS", "10"))
         self.summary_prompt = (base_dir / "agents" / "security_summary.md").read_text(encoding="utf-8")
         self.email_prompt = (base_dir / "agents" / "email_html.md").read_text(encoding="utf-8")
 
@@ -53,16 +54,18 @@ class AIRecommendationService:
             "banking security, ISO 27001/27002, PCI DSS, threat hunting, malware triage, "
             "and containment. Be concise, operational, and practical."
         )
-        if self.provider_name == "ollama":
+        recent_messages = messages[-6:]
+        if self.provider_name == "ollama" or self.ollama_url:
             try:
-                return self._ollama_chat(system_prompt, messages)
+                reply = self._ollama_chat(system_prompt, recent_messages)
+                if reply:
+                    return reply
             except Exception:
                 pass
         if messages:
             return (
-                "H-Brain here. I am the cybersecurity assistant developed by Hanicar Security. "
-                "Ollama is unavailable right now, but I can still help you reason through "
-                "incident triage, enrichment, scoring, and containment."
+                "H-Brain here. Share the alert, IOC, case context, or investigation goal, "
+                "and I will help with triage, enrichment, scoring, containment, and response actions."
             )
         return (
             "H-Brain here. I am the cybersecurity assistant developed by Hanicar Security, "
@@ -145,7 +148,7 @@ class AIRecommendationService:
         http_request = request.Request(endpoint, data=body, headers=headers, method="POST")
 
         try:
-            with request.urlopen(http_request, timeout=self.timeout) as response:
+            with request.urlopen(http_request, timeout=self.chat_timeout) as response:
                 raw = json.loads(response.read().decode("utf-8"))
                 return raw.get("message", {}).get("content", "").strip()
         except error.HTTPError as exc:
