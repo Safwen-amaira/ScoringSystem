@@ -46,6 +46,8 @@ from .ingestion import compute_pkis, extract_iocs, normalize_raw_request
 from .mitre import match_techniques
 from .models import (
     CVEListResponse,
+    ChatRequest,
+    ChatResponse,
     DashboardCaseDetail,
     DashboardCaseListResponse,
     DashboardOverview,
@@ -297,6 +299,12 @@ def score_and_email(request: ScoringRequest) -> dict:
         raise HTTPException(status_code=502, detail=f"Email dispatch failed: {exc}") from exc
 
     return {"score": _score_response(response).model_dump(), "email": email_payload.model_dump(), "email_sent": sent}
+
+
+@app.post("/api/chat", response_model=ChatResponse)
+def api_chat(request: ChatRequest, _: dict = Depends(_current_user)) -> ChatResponse:
+    reply = ai_service.chat([message.model_dump() for message in request.messages])
+    return ChatResponse(message={"role": "assistant", "content": reply})
 
 
 @app.get("/api/dashboard/overview", response_model=DashboardOverview)

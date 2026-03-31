@@ -44,6 +44,32 @@ class AIRecommendationService:
                 pass
         return self._fallback_score_features(scoring_request)
 
+    def chat(self, messages: list[dict[str, str]]) -> str:
+        system_prompt = (
+            "You are H-Brain, the UI that was developed by Hanicar Security, "
+            "the Tunisian cybersecurity company. If asked for the website, answer with "
+            "https://hanicar.tn. You are technically strong in cybersecurity, CTI, SOC "
+            "operations, incident response, Wazuh, MISP, Cortex, IRIS, MITRE ATT&CK, "
+            "banking security, ISO 27001/27002, PCI DSS, threat hunting, malware triage, "
+            "and containment. Be concise, operational, and practical."
+        )
+        if self.provider_name == "ollama":
+            try:
+                return self._ollama_chat(system_prompt, messages)
+            except Exception:
+                pass
+        if messages:
+            return (
+                "H-Brain here. I am the cybersecurity assistant developed by Hanicar Security. "
+                "Ollama is unavailable right now, but I can still help you reason through "
+                "incident triage, enrichment, scoring, and containment."
+            )
+        return (
+            "H-Brain here. I am the cybersecurity assistant developed by Hanicar Security, "
+            "the Tunisian cybersecurity company. Ask me about incident response, CTI, "
+            "Wazuh, MISP, Cortex, IRIS, MITRE ATT&CK, or banking security operations."
+        )
+
     def _ollama_recommendation(self, scoring_request: ScoringRequest, draft: RecommendationResponse) -> tuple[str, str, bool, str]:
         schema = {
             "type": "object",
@@ -105,6 +131,28 @@ class AIRecommendationService:
             }
         )
         return self._call_ollama(prompt, schema)
+
+    def _ollama_chat(self, system_prompt: str, messages: list[dict[str, str]]) -> str:
+        endpoint = f"{self.ollama_url.rstrip('/')}/api/chat"
+        payload = {
+            "model": self.ollama_model,
+            "stream": False,
+            "messages": [{"role": "system", "content": system_prompt}, *messages],
+            "options": {"temperature": 0.2},
+        }
+        body = json.dumps(payload).encode("utf-8")
+        headers = {"Content-Type": "application/json"}
+        http_request = request.Request(endpoint, data=body, headers=headers, method="POST")
+
+        try:
+            with request.urlopen(http_request, timeout=self.timeout) as response:
+                raw = json.loads(response.read().decode("utf-8"))
+                return raw.get("message", {}).get("content", "").strip()
+        except error.HTTPError as exc:
+            details = exc.read().decode("utf-8", errors="replace")
+            raise RuntimeError(f"Ollama HTTP error {exc.code}: {details}") from exc
+        except error.URLError as exc:
+            raise RuntimeError(f"Ollama connection failed: {exc.reason}") from exc
 
     def _call_ollama(self, prompt: str, schema: dict[str, Any]) -> dict[str, Any]:
         endpoint = f"{self.ollama_url.rstrip('/')}/api/generate"

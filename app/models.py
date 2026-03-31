@@ -280,3 +280,16 @@ class MitreTechniqueListResponse(BaseModel):
     total: int
     page: int
     page_size: int
+
+
+class ChatMessage(BaseModel):
+    role: str
+    content: str
+
+
+class ChatRequest(BaseModel):
+    messages: List[ChatMessage] = Field(default_factory=list)
+
+
+class ChatResponse(BaseModel):
+    message: ChatMessage
