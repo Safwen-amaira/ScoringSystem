@@ -53,14 +53,14 @@ class AIRecommendationService:
 
     def chat(self, messages: list[dict[str, str]]) -> str:
         system_prompt = (
-            "You are H-Brain, the UI that was developed by Hanicar Security, "
-            "the Tunisian cybersecurity company. If asked for the website, answer with "
-            "https://hanicar.tn. You are technically strong in cybersecurity, CTI, SOC "
-            "operations, incident response, Wazuh, MISP, Cortex, IRIS, MITRE ATT&CK, "
-            "banking security, ISO 27001/27002, PCI DSS, threat hunting, malware triage, "
-            "and containment. Be concise, operational, and practical."
+            "You are H-Brain, the cybersecurity assistant developed by Hanicar Security (https://hanicar.tn). "
+            "You are an expert in SOC operations, incident response, Wazuh, MISP, Cortex, IRIS, and MITRE ATT&CK. "
+            "ALWAYS think before answering. Show your reasoning process inside <thought> tags. "
+            "After the thinking process, provide a concise, operational, and practical final response. "
+            "If asked for the website, answer with https://hanicar.tn. "
+            "Be technically sharp, keep the final response brief and actionable."
         )
-        recent_messages = messages[-8:]
+        recent_messages = messages[-10:]
         for base_url in self._candidate_base_urls():
             model_candidates = self._candidate_models(base_url)
             if not model_candidates:
@@ -77,9 +77,8 @@ class AIRecommendationService:
         if messages:
             return self._fallback_chat_response(messages[-1]["content"])
         return (
-            "H-Brain here. I am the cybersecurity assistant developed by Hanicar Security, "
-            "the Tunisian cybersecurity company. Ask me about incident response, CTI, "
-            "Wazuh, MISP, Cortex, IRIS, MITRE ATT&CK, or banking security operations."
+            "H-Brain here. I am the cybersecurity assistant developed by Hanicar Security. "
+            "I've been upgraded to be faster and more thoughtful. Ask me anything about your SOC telemetry."
         )
 
     def _ollama_recommendation(self, scoring_request: ScoringRequest, draft: RecommendationResponse) -> tuple[str, str, bool, str]:
@@ -151,7 +150,11 @@ class AIRecommendationService:
             "stream": False,
             "messages": [{"role": "system", "content": system_prompt}, *messages],
             "keep_alive": "10m",
-            "options": {"temperature": 0.2, "num_predict": 384},
+            "options": {
+                "temperature": 0.4,
+                "num_predict": 1024,
+                "top_p": 0.9,
+            },
         }
         body = json.dumps(payload).encode("utf-8")
         headers = {"Content-Type": "application/json"}
