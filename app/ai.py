@@ -313,10 +313,25 @@ class AIRecommendationService:
 
         report = ""
         if errors:
+            # Try to get a clean list of available models to help with debugging
+            discovered: list[str] = []
+            for base_url in self._candidate_base_urls():
+                try:
+                    discovered.extend(self._list_models(base_url))
+                except Exception:
+                    continue
+            
+            discovery_report = ""
+            if discovered:
+                discovery_report = "\nDiscovered models on your server: " + ", ".join(set(discovered))
+            else:
+                discovery_report = "\nNo models found. Check if 'ollama-init' finished successfully."
+
             report = (
                 "\n\n--- H-Brain Connectivity Report ---\n"
                 "I attempted to reach your Ollama instance but encountered these issues:\n"
                 + "\n".join(f"• {e}" for e in errors[:4])
+                + discovery_report
                 + "\nEnsure Ollama is running and accessible (check http://YOUR_OLLAMA_IP:11434/api/tags)."
             )
 
