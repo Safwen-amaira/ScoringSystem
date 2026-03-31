@@ -61,10 +61,18 @@ class AIRecommendationService:
             "Be technically sharp, keep the final response brief and actionable."
         )
         recent_messages = messages[-10:]
+        errors: list[str] = []
         for base_url in self._candidate_base_urls():
-            model_candidates = self._candidate_models(base_url)
-            if not model_candidates:
+            try:
+                model_candidates = self._candidate_models(base_url)
+            except Exception as exc:
+                errors.append(f"Connectivity at {base_url}: {exc}")
                 continue
+
+            if not model_candidates:
+                errors.append(f"No models found at {base_url}")
+                continue
+
             for model_name in model_candidates:
                 try:
                     reply = self._ollama_chat(system_prompt, recent_messages, base_url=base_url, model=model_name)
@@ -72,13 +80,15 @@ class AIRecommendationService:
                         self.ollama_url = base_url
                         self.ollama_model = model_name
                         return reply
-                except Exception:
+                except Exception as exc:
+                    errors.append(f"Model {model_name} @ {base_url}: {exc}")
                     continue
+
         if messages:
-            return self._fallback_chat_response(messages[-1]["content"])
+            return self._fallback_chat_response(messages[-1]["content"], errors=errors)
         return (
             "H-Brain here. I am the cybersecurity assistant developed by Hanicar Security. "
-            "I've been upgraded to be faster and more thoughtful. Ask me anything about your SOC telemetry."
+            "Ask me anything about your SOC telemetry. (Reasoning enabled)."
         )
 
     def _ollama_recommendation(self, scoring_request: ScoringRequest, draft: RecommendationResponse) -> tuple[str, str, bool, str]:
@@ -174,9 +184,11 @@ class AIRecommendationService:
         candidates = [
             self.ollama_url,
             "http://ollama:11434",
-            "http://127.0.0.1:11434",
             "http://localhost:11434",
+            "http://127.0.0.1:11434",
             "http://host.docker.internal:11434",
+            "http://172.17.0.1:11434",
+            "http://192.168.1.1:11434",
         ]
         unique: list[str] = []
         for candidate in candidates:
@@ -294,31 +306,43 @@ class AIRecommendationService:
             "alert_volume": 6 if any(token in text for token in ["multiple", "burst", "campaign"]) else 3,
         }
 
-    def _fallback_chat_response(self, user_message: str) -> str:
+    def _fallback_chat_response(self, user_message: str, errors: list[str] | None = None) -> str:
         text = user_message.strip().lower()
         if not text:
             return "H-Brain here. Share the alert, IOC, case context, or investigation goal, and I will help with triage, enrichment, scoring, containment, and response actions."
+
+        report = ""
+        if errors:
+            report = (
+                "\n\n--- H-Brain Connectivity Report ---\n"
+                "I attempted to reach your Ollama instance but encountered these issues:\n"
+                + "\n".join(f"• {e}" for e in errors[:4])
+                + "\nEnsure Ollama is running and accessible (check http://YOUR_OLLAMA_IP:11434/api/tags)."
+            )
+
         if any(token in text for token in ["who developed", "who made", "who are you", "developer", "developed you", "made you"]):
-            return "H-Brain was developed by Hanicar Security, the Tunisian cybersecurity company. If you need the website, it is https://hanicar.tn."
+            return f"H-Brain was developed by Hanicar Security, the Tunisian cybersecurity company (https://hanicar.tn).{report}"
         if any(token in text for token in ["what is cve", "what are cves", "cves mean", "cve mean"]):
-            return "CVE means Common Vulnerabilities and Exposures. It is a public identifier for a known security flaw, like CVE-2024-3400. In SOC work, CVEs help us map alerts to known vulnerabilities, assess exposure, prioritize patching, and explain risk to analysts and management."
+            return f"CVE (Common Vulnerabilities and Exposures) is a public identifier for a known security flaw. In SOC work, CVEs help us assess exposure and prioritize patching.{report}"
         if "mitre" in text or "attack" in text:
-            return "MITRE ATT&CK is a knowledge base of adversary tactics and techniques. In practice, we use it to map incidents to behaviors such as Initial Access, Execution, Lateral Movement, and Exfiltration so analysts can understand what stage of the intrusion they are dealing with."
+            return f"MITRE ATT&CK is a behavior-based adversary behavior model. We use it to explain what stage of an intrusion an incident represents.{report}"
         if "ioc" in text or "indicator" in text:
-            return "An IOC is an Indicator of Compromise, such as a malicious IP, domain, hash, URL, email, filename, or registry key. In triage, we extract IOCs from Wazuh, MISP, and Cortex outputs to pivot, enrich, block, and hunt for related activity."
+            return f"Indicators of Compromise (IOCs) are digital artifacts like malicious IPs, hashes, or domains used to hunt and block threats.{report}"
         if "wazuh" in text:
-            return "Wazuh is your detection source. It gives raw alerts, rule levels, agent context, groups, and event fields. In H-Brain, Wazuh alerts are used for immediate signal scoring, incident creation, IOC extraction, and workflow decisions."
+            return f"Wazuh is our detection engine that translates raw telemetry into high-confidence security alerts.{report}"
         if "misp" in text:
-            return "MISP is your threat intelligence source. It provides events, attributes, tags, threat levels, and known-bad indicators. In H-Brain, MISP enrichment boosts confidence in malicious infrastructure, links alerts to campaigns, and improves recommendation quality."
+            return f"MISP is our threat intelligence repository used for indicator enrichment and campaign matching.{report}"
         if "cortex" in text:
-            return "Cortex is your analysis layer. It runs analyzers such as VirusTotal-style lookups and returns verdicts like malicious, suspicious, or safe. In H-Brain, Cortex is treated as a strong signal, especially when it confirms malicious artifacts."
+            return f"Cortex is our analysis engine that provides verdicts on artifacts like URLs or files.{report}"
         if "iris" in text:
-            return "IRIS is your case management layer. It helps you track incidents, evidence, tasks, and response progress. In H-Brain, incidents can be linked to IRIS cases so analysts can move from detection to investigation and containment without losing context."
+            return f"IRIS is our case management platform where investigations are documented and coordinated.{report}"
         if any(token in text for token in ["score", "scoring", "how score", "risk score"]):
-            return "H-Brain uses a hybrid banking-oriented scoring model: deterministic SOC rules plus machine learning refinement. Strong signals such as malicious Cortex verdicts, known-bad indicators, lateral movement, exfiltration, repeated alerts, and banking asset criticality drive the final score and the decision to continue, review, or stop the workflow."
+            return f"H-Brain uses a hybrid banking scoring model: deep SOC rules + machine learning (RandomForest) trained on banking CTI scenarios.{report}"
         if any(token in text for token in ["contain", "containment", "response", "incident response"]):
-            return "For containment, start with the highest-confidence signals: isolate affected assets, block malicious IOCs, disable exposed credentials, validate lateral movement paths, preserve evidence, and map the event to MITRE ATT&CK so the response playbook matches the intrusion stage."
+            return f"For IR, start with isolation and evidence preservation. Map to MITRE ATT&CK to understand next steps.{report}"
+
         return (
-            "H-Brain here. I can help with CTI, incident response, Wazuh, MISP, Cortex, IRIS, MITRE ATT&CK, scoring, containment, and banking SOC workflows. "
-            "Share the alert, question, or case details and I will respond with operational guidance."
+            "H-Brain here. I couldn't reach your LLM engine, so I am providing a limited response.\n"
+            "I can help with CTI, incident response, Wazuh, MISP, Cortex, IRIS, MITRE ATT&CK, scoring, containment, and banking SOC workflows. "
+            f"Share the alert, question, or case details and I will respond with operational guidance.{report}"
         )
