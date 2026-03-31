@@ -211,7 +211,7 @@ class AIRecommendationService:
         endpoint = f"{base_url.rstrip('/')}/api/tags"
         http_request = request.Request(endpoint, headers={"Content-Type": "application/json"}, method="GET")
         try:
-            with request.urlopen(http_request, timeout=min(self.chat_timeout, 8)) as response:
+            with request.urlopen(http_request, timeout=min(self.chat_timeout, 30)) as response:
                 raw = json.loads(response.read().decode("utf-8"))
                 return [item.get("name") for item in raw.get("models", []) if item.get("name")]
         except error.HTTPError as exc:

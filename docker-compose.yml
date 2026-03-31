@@ -16,7 +16,7 @@ services:
       AI_PROVIDER: ${AI_PROVIDER:-ollama}
       OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://ollama:11434}
       OLLAMA_MODEL: ${OLLAMA_MODEL:-llama3.1:8b}
-      AI_TIMEOUT_SECONDS: ${AI_TIMEOUT_SECONDS:-30}
+      AI_TIMEOUT_SECONDS: ${AI_TIMEOUT_SECONDS:-300}
     volumes:
       - hanicar_data:/app/data
     depends_on:
@@ -42,6 +42,8 @@ services:
       - "11434:11434"
     volumes:
       - ollama_data:/root/.ollama
+    environment:
+      - OLLAMA_KEEP_ALIVE=-1
     healthcheck:
       test: ["CMD", "ollama", "list"]
       interval: 10s
