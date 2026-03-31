@@ -62,6 +62,7 @@ class ScoringRequest(BaseModel):
 
 class RawIntelligenceRequest(BaseModel):
     title: Optional[str] = None
+    iris_case_name: Optional[str] = None
     asset_name: Optional[str] = None
     analyst_email: Optional[str] = None
     workflow_id: Optional[str] = None
@@ -111,3 +112,72 @@ class EmailContentResponse(BaseModel):
     text: str
     ai_generated: bool
     ai_provider: str
+
+
+class LoginRequest(BaseModel):
+    email: str
+    password: str
+
+
+class LoginResponse(BaseModel):
+    token: str
+    email: str
+    display_name: str
+
+
+class DashboardCaseSummary(BaseModel):
+    id: int
+    case_name: str
+    iris_case_name: Optional[str] = None
+    asset_name: str
+    severity: str
+    score: int
+    decision: str
+    created_at: str
+    cve_count: int
+    ioc_count: int
+    ai_provider: str
+
+
+class DashboardCaseDetail(BaseModel):
+    id: int
+    case_name: str
+    iris_case_name: Optional[str] = None
+    asset_name: str
+    severity: str
+    score: int
+    decision: str
+    summary: str
+    recommendation_subject: str
+    recommendation_body: str
+    created_at: str
+    iocs: List[IOCItem]
+    pkis: List[PKIMetric]
+    cves: List[dict]
+    raw_payload: dict
+    normalized_payload: dict
+    result_payload: dict
+    email_payload: dict
+
+
+class DashboardCaseListResponse(BaseModel):
+    items: List[DashboardCaseSummary]
+    total: int
+    page: int
+    page_size: int
+
+
+class CVEListResponse(BaseModel):
+    items: List[dict]
+    total: int
+    page: int
+    page_size: int
+
+
+class DashboardOverview(BaseModel):
+    total_cases: int
+    critical_cases: int
+    average_score: float
+    open_stop_cases: int
+    cve_matches: int
+    latest_cases: List[DashboardCaseSummary]

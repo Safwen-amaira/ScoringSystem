@@ -10,15 +10,30 @@ services:
       SMTP_SENDER: ${SMTP_SENDER:-soc-automation@example.local}
       SMTP_USERNAME: ${SMTP_USERNAME:-}
       SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      HANICAR_ADMIN_EMAIL: ${HANICAR_ADMIN_EMAIL:-admin@hanicar.tn}
+      HANICAR_ADMIN_PASSWORD: ${HANICAR_ADMIN_PASSWORD:-bornasroot}
+      HANICAR_DATA_DIR: ${HANICAR_DATA_DIR:-/app/data}
       AI_PROVIDER: ${AI_PROVIDER:-ollama}
       OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://ollama:11434}
       OLLAMA_MODEL: ${OLLAMA_MODEL:-llama3.1:8b}
       AI_TIMEOUT_SECONDS: ${AI_TIMEOUT_SECONDS:-30}
+    volumes:
+      - hanicar_data:/app/data
     depends_on:
       ollama:
         condition: service_healthy
       ollama-init:
         condition: service_completed_successfully
+
+  hanicar-dashboard:
+    build:
+      context: ./dashboard
+    container_name: hanicar-dashboard
+    ports:
+      - "5173:5173"
+    depends_on:
+      threat-recommendation-engine:
+        condition: service_started
 
   ollama:
     image: ollama/ollama:latest
@@ -49,3 +64,4 @@ services:
 
 volumes:
   ollama_data:
+  hanicar_data:
