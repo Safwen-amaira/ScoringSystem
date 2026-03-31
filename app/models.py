@@ -119,6 +119,12 @@ class EmailContentResponse(BaseModel):
     ai_provider: str
 
 
+class ScoreAndRecommendationHTMLResponse(BaseModel):
+    score: ScoreResponse
+    recommendation: RecommendationResponse
+    email: EmailContentResponse
+
+
 class LoginRequest(BaseModel):
     email: str
     password: str

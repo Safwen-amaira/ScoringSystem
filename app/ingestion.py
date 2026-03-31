@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import re
 from collections.abc import Iterable
+from datetime import datetime, timezone
 from typing import Any
 
 from .models import (
@@ -45,7 +46,7 @@ def normalize_raw_request(payload: RawIntelligenceRequest) -> tuple[ScoringReque
     )
 
     iocs = extract_iocs(payload.model_dump())
-    pkis = compute_pkis(scoring_request, iocs)
+    pkis = compute_pkis(scoring_request, iocs, payload.model_dump())
     return scoring_request, iocs, pkis
 
 
@@ -73,9 +74,10 @@ def extract_iocs(data: Any) -> list[IOCItem]:
     return results
 
 
-def compute_pkis(request: ScoringRequest, iocs: list[IOCItem]) -> list[PKIMetric]:
+def compute_pkis(request: ScoringRequest, iocs: list[IOCItem], raw_payload: dict[str, Any] | None = None) -> list[PKIMetric]:
     malicious_signals = 0
     sources_present = 0
+    raw_payload = raw_payload or {}
 
     if request.wazuh_alert:
         sources_present += 1
@@ -92,11 +94,21 @@ def compute_pkis(request: ScoringRequest, iocs: list[IOCItem]) -> list[PKIMetric
         if request.cortex_analysis.verdict.lower() in {"malicious", "suspicious"}:
             malicious_signals += 1
 
+    detection_age_minutes = _event_age_minutes(raw_payload)
+    triage_pressure = (malicious_signals * 20) + (len(iocs) * 3) + (10 if detection_age_minutes > 120 else 0)
+    source_diversity_index = round((sources_present / 3.0) * 100, 1)
+    mttd_minutes = max(1.0, detection_age_minutes)
+    mtdr_minutes = round(max(5.0, (triage_pressure / max(1, sources_present)) * 2.2), 1)
+
     return [
         PKIMetric(name="source_coverage", value=float(sources_present), description="How many telemetry sources contributed to this case."),
         PKIMetric(name="ioc_count", value=float(len(iocs)), description="How many unique IOCs were extracted from the raw payloads."),
         PKIMetric(name="malicious_signal_count", value=float(malicious_signals), description="How many contributing sources indicated suspicious or malicious activity."),
         PKIMetric(name="high_confidence_case", value=float(1 if malicious_signals >= 2 and len(iocs) >= 2 else 0), description="A binary PKI showing whether multiple sources and IOCs support the case."),
+        PKIMetric(name="mttd_minutes", value=round(mttd_minutes, 1), description="Approximate mean time to detect from the most recent event timestamp present in the payload."),
+        PKIMetric(name="mtdr_minutes", value=mtdr_minutes, description="Estimated mean time to detect and respond based on signal pressure and source diversity."),
+        PKIMetric(name="source_diversity_index", value=source_diversity_index, description="Percentage score showing how much of the Wazuh, MISP, and Cortex triad contributed evidence."),
+        PKIMetric(name="triage_pressure_index", value=round(min(100.0, triage_pressure), 1), description="Composite triage pressure based on signal count, IOC volume, and event freshness."),
     ]
 
 
@@ -223,3 +235,31 @@ def _json_preview(value: Any) -> str:
     if isinstance(value, str):
         return value[:400]
     return json.dumps(value, ensure_ascii=True)[:400]
+
+
+def _event_age_minutes(raw_payload: dict[str, Any]) -> float:
+    timestamps: list[datetime] = []
+    for text, _ in _iter_strings(raw_payload):
+        candidate = _parse_timestamp(text)
+        if candidate:
+            timestamps.append(candidate)
+    if not timestamps:
+        return 15.0
+    latest = max(timestamps)
+    age = datetime.now(timezone.utc) - latest.astimezone(timezone.utc)
+    return max(1.0, age.total_seconds() / 60.0)
+
+
+def _parse_timestamp(value: str) -> datetime | None:
+    text = value.strip()
+    if len(text) < 10:
+        return None
+    for candidate in [text.replace("Z", "+00:00"), text]:
+        try:
+            parsed = datetime.fromisoformat(candidate)
+            if parsed.tzinfo is None:
+                parsed = parsed.replace(tzinfo=timezone.utc)
+            return parsed
+        except ValueError:
+            continue
+    return None

@@ -92,8 +92,10 @@ class AIRecommendationService:
                 "customer_impact": {"type": "boolean"},
                 "external_exposure": {"type": "boolean"},
                 "credential_risk": {"type": "boolean"},
+                "endpoint_criticality": {"type": "number"},
+                "alert_volume": {"type": "number"},
             },
-            "required": ["confidence", "banking_context", "customer_impact", "external_exposure", "credential_risk"],
+            "required": ["confidence", "banking_context", "customer_impact", "external_exposure", "credential_risk", "endpoint_criticality", "alert_volume"],
             "additionalProperties": False,
         }
         prompt = json.dumps(
@@ -186,4 +188,6 @@ class AIRecommendationService:
             "customer_impact": any(token in text for token in ["customer", "account", "identity"]),
             "external_exposure": any(token in text for token in ["external", "internet", "public", "edge"]),
             "credential_risk": any(token in text for token in ["credential", "password", "authentication", "login"]),
+            "endpoint_criticality": 5 if any(token in text for token in ["swift", "payment", "core", "issuer", "merchant"]) else 3,
+            "alert_volume": 6 if any(token in text for token in ["multiple", "burst", "campaign"]) else 3,
         }

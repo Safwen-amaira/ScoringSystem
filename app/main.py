@@ -33,6 +33,9 @@ from .hbrain_store import (
     list_mitre,
     list_notifications,
     mark_notification_read,
+    store_cortex_job,
+    store_misp_event,
+    store_wazuh_alert,
     sync_cortex_from_settings,
     sync_iris_from_settings,
     sync_misp_from_settings,
@@ -54,13 +57,14 @@ from .models import (
     NotificationListResponse,
     RawIntelligenceRequest,
     RecommendationResponse,
+    ScoreAndRecommendationHTMLResponse,
     ScoreResponse,
     ScoringRequest,
     SettingsResponse,
     SettingsUpdateRequest,
     WazuhAlertIngestRequest,
 )
-from .score_model import ensure_training_dataset, get_score_model
+from .score_model import TRAINING_CSV, ensure_training_dataset, get_score_model
 from .scoring import build_recommendation
 
 
@@ -181,6 +185,29 @@ def _email_payload(request: ScoringRequest, result: RecommendationResponse) -> E
 
 def _store_raw_case(raw_request: RawIntelligenceRequest, normalized_request: ScoringRequest, result: RecommendationResponse, cve_rows: list[dict]) -> int:
     email_payload = _email_payload(normalized_request, result)
+    if raw_request.wazuh_alert:
+        store_wazuh_alert(
+            source_id=str(raw_request.wazuh_alert.get("id") or raw_request.wazuh_alert.get("_id") or normalized_request.title),
+            title=str(raw_request.wazuh_alert.get("rule", {}).get("description") or normalized_request.title),
+            severity="critical" if (raw_request.wazuh_alert.get("rule", {}).get("level") or 0) >= 14 else "high" if (raw_request.wazuh_alert.get("rule", {}).get("level") or 0) >= 10 else "medium",
+            raw_payload=raw_request.wazuh_alert,
+        )
+    if raw_request.misp_event:
+        event = raw_request.misp_event.get("Event", raw_request.misp_event)
+        store_misp_event(
+            source_id=str(event.get("id") or event.get("uuid") or normalized_request.title),
+            title=str(event.get("info") or normalized_request.title),
+            severity="critical" if str(event.get("threat_level_id") or "4") == "1" else "high" if str(event.get("threat_level_id") or "4") == "2" else "medium",
+            raw_payload=raw_request.misp_event,
+        )
+    if raw_request.cortex_analysis:
+        blob = str(raw_request.cortex_analysis).lower()
+        store_cortex_job(
+            source_id=str(raw_request.cortex_analysis.get("id") or raw_request.cortex_analysis.get("_id") or normalized_request.title),
+            title=str(raw_request.cortex_analysis.get("analyzerName") or raw_request.cortex_analysis.get("analyzer_name") or normalized_request.title),
+            severity="critical" if "malicious" in blob else "high" if "suspicious" in blob else "medium",
+            raw_payload=raw_request.cortex_analysis,
+        )
     case_id = store_case(
         raw_payload=raw_request.model_dump(),
         normalized_request=normalized_request,
@@ -242,6 +269,17 @@ def recommendation_email(request: RawIntelligenceRequest) -> EmailContentRespons
     normalized_request, result, cve_rows = _normalize_raw(request)
     _store_raw_case(request, normalized_request, result, cve_rows)
     return _email_payload(normalized_request, result)
+
+
+@app.post("/api/intelligence/score-html", response_model=ScoreAndRecommendationHTMLResponse)
+def intelligence_score_html(request: RawIntelligenceRequest) -> ScoreAndRecommendationHTMLResponse:
+    normalized_request, result, cve_rows = _normalize_raw(request)
+    _store_raw_case(request, normalized_request, result, cve_rows)
+    return ScoreAndRecommendationHTMLResponse(
+        score=_score_response(result),
+        recommendation=result,
+        email=_email_payload(normalized_request, result),
+    )
 
 
 @app.post("/api/score-and-email")
@@ -351,8 +389,6 @@ def api_wazuh_alert_ingest(request: WazuhAlertIngestRequest) -> dict:
     title = request.title or request.wazuh_alert.get("rule", {}).get("description") or "Wazuh alert"
     severity_value = request.wazuh_alert.get("rule", {}).get("level", 5)
     severity = "critical" if severity_value >= 14 else "high" if severity_value >= 10 else "medium" if severity_value >= 6 else "low"
-    from .hbrain_store import store_wazuh_alert
-
     alert_id = store_wazuh_alert(
         source_id=str(request.wazuh_alert.get("id") or request.wazuh_alert.get("_id") or title),
         title=title,
@@ -375,6 +411,11 @@ def api_wazuh_alert_ingest(request: WazuhAlertIngestRequest) -> dict:
     if severity in {"critical", "high"}:
         create_notification(case_id, f"Wazuh {severity} alert", severity, title)
     return {"status": "ok", "alert_id": alert_id, "case_id": case_id}
+
+
+@app.get("/api/model/training-dataset")
+def api_training_dataset(_: dict = Depends(_current_user)) -> dict[str, str]:
+    return {"path": str(TRAINING_CSV), "status": "ready" if TRAINING_CSV.exists() else "missing"}
 
 
 @app.get("/api/dashboard/wazuh-alerts", response_model=ExternalItemListResponse)

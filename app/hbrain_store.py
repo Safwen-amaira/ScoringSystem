@@ -183,12 +183,28 @@ def mark_notification_read(notification_id: int) -> None:
 
 def store_wazuh_alert(source_id: str, title: str, severity: str, raw_payload: dict[str, Any]) -> int:
     with get_connection() as connection:
+        existing = connection.execute("SELECT id FROM wazuh_alerts WHERE source_id = ? ORDER BY id DESC LIMIT 1", (source_id,)).fetchone()
+        if existing:
+            connection.execute(
+                "UPDATE wazuh_alerts SET title = ?, severity = ?, raw_payload = ?, created_at = ? WHERE id = ?",
+                (title, severity, json.dumps(raw_payload), _now(), existing["id"]),
+            )
+            connection.commit()
+            return int(existing["id"])
         cursor = connection.execute(
             "INSERT INTO wazuh_alerts (source_id, title, severity, raw_payload, created_at) VALUES (?, ?, ?, ?, ?)",
             (source_id, title, severity, json.dumps(raw_payload), _now()),
         )
         connection.commit()
         return int(cursor.lastrowid)
+
+
+def store_misp_event(source_id: str, title: str, severity: str, raw_payload: dict[str, Any]) -> int:
+    return _store_external_item("misp_events", source_id, title, severity, raw_payload)
+
+
+def store_cortex_job(source_id: str, title: str, severity: str, raw_payload: dict[str, Any]) -> int:
+    return _store_external_item("cortex_jobs", source_id, title, severity, raw_payload)
 
 
 def list_external_items(table_name: str, page: int, page_size: int, severity: str | None = None) -> tuple[list[ExternalItemResponse], int]:
@@ -375,3 +391,21 @@ def get_case_mitre(case_id: int) -> list[dict[str, Any]]:
         }
         for row in rows
     ]
+
+
+def _store_external_item(table_name: str, source_id: str, title: str, severity: str, raw_payload: dict[str, Any]) -> int:
+    with get_connection() as connection:
+        existing = connection.execute(f"SELECT id FROM {table_name} WHERE source_id = ? ORDER BY id DESC LIMIT 1", (source_id,)).fetchone()
+        if existing:
+            connection.execute(
+                f"UPDATE {table_name} SET title = ?, severity = ?, raw_payload = ?, created_at = ? WHERE id = ?",
+                (title, severity, json.dumps(raw_payload), _now(), existing["id"]),
+            )
+            connection.commit()
+            return int(existing["id"])
+        cursor = connection.execute(
+            f"INSERT INTO {table_name} (source_id, title, severity, raw_payload, created_at) VALUES (?, ?, ?, ?, ?)",
+            (source_id, title, severity, json.dumps(raw_payload), _now()),
+        )
+        connection.commit()
+        return int(cursor.lastrowid)
