@@ -15,11 +15,17 @@ class AIRecommendationService:
         base_dir = Path(__file__).resolve().parent.parent
         self.provider_name = os.getenv("AI_PROVIDER", "file-agent")
         self.ollama_url = os.getenv("OLLAMA_BASE_URL", "http://ollama:11434")
-        self.ollama_model = os.getenv("OLLAMA_MODEL", "llama3.1:8b")
+        self.ollama_model = os.getenv("OLLAMA_MODEL", "llama3.2:3b")
         self.timeout = int(os.getenv("AI_TIMEOUT_SECONDS", "30"))
-        self.chat_timeout = int(os.getenv("AI_CHAT_TIMEOUT_SECONDS", "6"))
+        self.chat_timeout = int(os.getenv("AI_CHAT_TIMEOUT_SECONDS", "20"))
         self.summary_prompt = (base_dir / "agents" / "security_summary.md").read_text(encoding="utf-8")
         self.email_prompt = (base_dir / "agents" / "email_html.md").read_text(encoding="utf-8")
+
+    def apply_runtime_settings(self, base_url: str | None = None, model: str | None = None) -> None:
+        if base_url:
+            self.ollama_url = base_url.strip()
+        if model:
+            self.ollama_model = model.strip()
 
     def enrich_recommendation(self, scoring_request: ScoringRequest, draft: RecommendationResponse) -> tuple[str, str, bool, str]:
         if self.provider_name == "ollama":
@@ -54,14 +60,20 @@ class AIRecommendationService:
             "banking security, ISO 27001/27002, PCI DSS, threat hunting, malware triage, "
             "and containment. Be concise, operational, and practical."
         )
-        recent_messages = messages[-6:]
-        if self.provider_name == "ollama" or self.ollama_url:
-            try:
-                reply = self._ollama_chat(system_prompt, recent_messages)
-                if reply:
-                    return reply
-            except Exception:
-                pass
+        recent_messages = messages[-8:]
+        for base_url in self._candidate_base_urls():
+            model_candidates = self._candidate_models(base_url)
+            if not model_candidates:
+                continue
+            for model_name in model_candidates:
+                try:
+                    reply = self._ollama_chat(system_prompt, recent_messages, base_url=base_url, model=model_name)
+                    if reply:
+                        self.ollama_url = base_url
+                        self.ollama_model = model_name
+                        return reply
+                except Exception:
+                    continue
         if messages:
             return self._fallback_chat_response(messages[-1]["content"])
         return (
@@ -132,13 +144,14 @@ class AIRecommendationService:
         )
         return self._call_ollama(prompt, schema)
 
-    def _ollama_chat(self, system_prompt: str, messages: list[dict[str, str]]) -> str:
-        endpoint = f"{self.ollama_url.rstrip('/')}/api/chat"
+    def _ollama_chat(self, system_prompt: str, messages: list[dict[str, str]], base_url: str | None = None, model: str | None = None) -> str:
+        endpoint = f"{(base_url or self.ollama_url).rstrip('/')}/api/chat"
         payload = {
-            "model": self.ollama_model,
+            "model": model or self.ollama_model,
             "stream": False,
             "messages": [{"role": "system", "content": system_prompt}, *messages],
-            "options": {"temperature": 0.2},
+            "keep_alive": "10m",
+            "options": {"temperature": 0.2, "num_predict": 384},
         }
         body = json.dumps(payload).encode("utf-8")
         headers = {"Content-Type": "application/json"}
@@ -153,6 +166,44 @@ class AIRecommendationService:
             raise RuntimeError(f"Ollama HTTP error {exc.code}: {details}") from exc
         except error.URLError as exc:
             raise RuntimeError(f"Ollama connection failed: {exc.reason}") from exc
+
+    def _candidate_base_urls(self) -> list[str]:
+        candidates = [
+            self.ollama_url,
+            "http://ollama:11434",
+            "http://127.0.0.1:11434",
+            "http://localhost:11434",
+            "http://host.docker.internal:11434",
+        ]
+        unique: list[str] = []
+        for candidate in candidates:
+            if candidate and candidate not in unique:
+                unique.append(candidate)
+        return unique
+
+    def _candidate_models(self, base_url: str) -> list[str]:
+        models = [self.ollama_model]
+        try:
+            available = self._list_models(base_url)
+        except Exception:
+            available = []
+        for model_name in available:
+            if model_name not in models:
+                models.append(model_name)
+        return models
+
+    def _list_models(self, base_url: str) -> list[str]:
+        endpoint = f"{base_url.rstrip('/')}/api/tags"
+        http_request = request.Request(endpoint, headers={"Content-Type": "application/json"}, method="GET")
+        try:
+            with request.urlopen(http_request, timeout=min(self.chat_timeout, 8)) as response:
+                raw = json.loads(response.read().decode("utf-8"))
+                return [item.get("name") for item in raw.get("models", []) if item.get("name")]
+        except error.HTTPError as exc:
+            details = exc.read().decode("utf-8", errors="replace")
+            raise RuntimeError(f"Ollama tags HTTP error {exc.code}: {details}") from exc
+        except error.URLError as exc:
+            raise RuntimeError(f"Ollama tags connection failed: {exc.reason}") from exc
 
     def _call_ollama(self, prompt: str, schema: dict[str, Any]) -> dict[str, Any]:
         endpoint = f"{self.ollama_url.rstrip('/')}/api/generate"
