@@ -42,7 +42,7 @@ def fetch_cve_by_id(cve_id: str) -> dict[str, Any] | None:
     }
 
 
-def fetch_recent_cves(limit: int = 100) -> list[dict[str, Any]]:
+def fetch_recent_cves(limit: int = 3000) -> list[dict[str, Any]]:
     url = "https://cve.circl.lu/api/last"
     try:
         with request.urlopen(url, timeout=20) as response:
