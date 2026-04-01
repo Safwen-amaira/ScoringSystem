@@ -86,14 +86,28 @@ function DetailsBlock({ title, value, open = false }) {
 }
 
 function TrendChart({ points, labels }) {
-  const safe = points.length ? points : [42, 58, 51, 66, 61, 74, 68, 80];
+  const safe = (points.length ? points : [42, 58, 51, 66, 61, 74, 68, 80]).slice(-7);
+  const safeLabels = (labels.length ? labels : ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]).slice(-7);
   const max = Math.max(...safe, 1);
-  const mapped = safe.map((value, index) => ({ value, x: 50 + index * ((700 - 100) / Math.max(1, safe.length - 1)), y: 240 - (value / max) * 150, label: labels[index] || `P${index + 1}` }));
+  const mapped = safe.map((value, index) => ({ value, x: 50 + index * ((700 - 100) / Math.max(1, safe.length - 1)), y: 240 - (value / max) * 150, label: safeLabels[index] || `D${index + 1}` }));
   const line = mapped.map((point) => `${point.x},${point.y}`).join(" ");
   const area = `50,250 ${line} 700,250`;
   const [hovered, setHovered] = useState(null);
   const [tooltip, setTooltip] = useState({ x: 0, y: 0 });
-  return <div className="interactive-chart"><svg viewBox="0 0 760 280" preserveAspectRatio="none" className="trend-chart-svg" onMouseLeave={() => setHovered(null)}>{[0, 1, 2, 3].map((row) => <line key={row} x1="50" x2="700" y1={70 + row * 45} y2={70 + row * 45} className="chart-grid-line" />)}{mapped.map((point) => <line key={point.label} x1={point.x} x2={point.x} y1="60" y2="250" className="chart-grid-vertical" />)}<path d={`M ${area}`} className="chart-area-primary" /><polyline points={line} className="chart-line-primary" />{mapped.map((point) => <g key={point.label} onMouseEnter={(event) => { const box = event.currentTarget.ownerSVGElement.getBoundingClientRect(); setHovered(point); setTooltip({ x: event.clientX - box.left, y: event.clientY - box.top }); }} onMouseMove={(event) => { const box = event.currentTarget.ownerSVGElement.getBoundingClientRect(); setTooltip({ x: event.clientX - box.left, y: event.clientY - box.top }); }}><circle cx={point.x} cy={point.y} r="5.5" className="chart-dot" /><rect x={point.x - 18} y="55" width="36" height="195" className="chart-hitbox" /><text x={point.x} y="268" textAnchor="middle" className="chart-x-label">{point.label}</text></g>)}</svg>{hovered ? <div className="chart-tooltip floating" style={{ left: tooltip.x + 16, top: tooltip.y - 18 }}><strong>{hovered.value}</strong><span>{hovered.label}</span></div> : null}</div>;
+
+  const handleMouseMove = (event) => {
+    const box = event.currentTarget.getBoundingClientRect();
+    const x = event.clientX - box.left;
+    const y = event.clientY - box.top;
+    setTooltip({ x, y });
+    
+    // Find nearest point
+    const svgX = (x / box.width) * 760;
+    const closest = mapped.reduce((prev, curr) => (Math.abs(curr.x - svgX) < Math.abs(prev.x - svgX) ? curr : prev));
+    setHovered(closest);
+  };
+
+  return <div className="interactive-chart"><svg viewBox="0 0 760 280" preserveAspectRatio="none" className="trend-chart-svg" onMouseLeave={() => setHovered(null)} onMouseMove={handleMouseMove}>{[0, 1, 2, 3].map((row) => <line key={row} x1="50" x2="700" y1={70 + row * 45} y2={70 + row * 45} className="chart-grid-line" />)}<path d={`M ${area}`} className="chart-area-primary" /><polyline points={line} className="chart-line-primary" />{mapped.map((point) => <g key={point.label}><circle cx={point.x} cy={point.y} r="5.5" className="chart-dot" style={{ opacity: hovered?.label === point.label ? 1 : 0.4 }} /><text x={point.x} y="268" textAnchor="middle" className="chart-x-label">{point.label}</text></g>)}</svg>{hovered ? <div className="chart-tooltip floating" style={{ left: tooltip.x + 12, top: tooltip.y - 12 }}><strong>{hovered.value}</strong><span>{hovered.label}</span></div> : null}</div>;
 }
 
 function SourceBars({ items }) {
@@ -102,14 +116,15 @@ function SourceBars({ items }) {
 }
 
 function HeatmapCard({ items }) {
-  const grid = Array.from({ length: 364 }, (_, index) => {
+  const gridCount = Math.max(364, Math.ceil(items.length / 7) * 7);
+  const grid = Array.from({ length: gridCount }, (_, index) => {
     const item = items[index];
     return item ? { severity: item.severity, title: item.case_name || item.title || "Incident", score: item.score } : { severity: "empty" };
   });
 
   return (
     <div>
-      <div className="severity-heatmap enhanced">
+      <div className="severity-heatmap enhanced" style={{ gridTemplateColumns: `repeat(${Math.ceil(gridCount / 7)}, 1fr)` }}>
         {grid.map((cell, index) => (
           <button
             key={index}
@@ -137,10 +152,10 @@ function TopTargetAssetsCard({ items }) {
   return (
     <div className="summary-stack" style={{ marginTop: "1rem" }}>
       {top.map(([name, count]) => (
-        <div key={name} className="mini-module-card" style={{ padding: "0.75rem", borderRadius: "12px", background: "rgba(255,255,255,0.02)" }}>
+        <div key={name} className="mini-module-card" style={{ padding: "0.85rem", borderRadius: "14px", background: "#0f1114", border: "1px solid var(--line)", marginBottom: "0.5rem" }}>
           <div style={{ display: "flex", justifyContent: "space-between", width: "100%", alignItems: "center" }}>
-            <span style={{ fontSize: "0.85rem", color: "var(--text)" }}>{name}</span>
-            <strong style={{ color: "var(--gold-primary)", fontSize: "0.9rem" }}>{count} pts</strong>
+            <span style={{ fontSize: "0.85rem", color: "var(--muted)" }}>{name}</span>
+            <strong style={{ color: "var(--gold-primary)", fontSize: "0.95rem" }}>{count} cases</strong>
           </div>
         </div>
       ))}
@@ -436,7 +451,7 @@ function App() {
         answer = message.content.replace(/<thought>[\s\S]*?<\/thought>/, "").trim();
       }
     }
-    return <article key={`${message.role}-${index}`} className={`message-row ${message.role}`}><div className="message-avatar">{isAssistant ? <img src="https://hanicar.tn/logo.png" alt="H-Brain" /> : <div className="user-icon-avatar"><Icon name="user" /></div>}</div><div className="message-body"><strong>{isAssistant ? "H-Brain" : "You"}</strong><div className="message-text">{thought ? <details className="chat-thought" open><summary>Strategic Reasoning</summary><p>{thought}</p></details> : null}{renderFormatted(answer)}</div>{isAssistant ? <div className="message-actions"><button className="chat-action-btn" onClick={() => copyToClipboard(answer)} title="Copy message" type="button"><Icon name="copy" /></button></div> : null}</div></article>;
+    return <article key={`${message.role}-${index}`} className={`message-row ${message.role}`}><div className="message-avatar">{isAssistant && <img src="https://hanicar.tn/logo.png" alt="H-Brain" />}</div><div className="message-body">{!isAssistant && <strong>You</strong>}<div className="message-text">{thought ? <details className="chat-thought" open><summary>Strategic Reasoning</summary><p>{thought}</p></details> : null}{renderFormatted(answer)}</div>{isAssistant ? <div className="message-actions"><button className="chat-action-btn" onClick={() => copyToClipboard(answer)} title="Copy message" type="button"><Icon name="copy" /></button></div> : null}</div>{!isAssistant && <div className="message-avatar user-avatar-right"><div className="user-icon-avatar"><Icon name="user" /></div></div>}</article>;
   })}{busy === "chat" ? <article className="message-row assistant loading"><div className="message-avatar"><img src="https://hanicar.tn/logo.png" alt="H-Brain" /></div><div className="message-body"><strong>H-Brain</strong><div className="shimmering-bar" /></div></article> : null}</div></div><form className="chat-input-area" onSubmit={handleChatSubmit}><div className="input-pill"><textarea value={chatDraft} onChange={(event) => setChatDraft(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); handleChatSubmit(event); } }} placeholder="Ask H-Brain about your security events..." /></div><button type="submit" className="send-btn" disabled={busy === "chat" || !chatDraft.trim()}><Icon name="chat" /></button><div className="chat-disclaimer">This is a LLM fine tunned by hanicar security and response may be wrong sometimes.</div></form></div></section> : null}
 
   {activeNav === "settings" ? <section className="panel firebase-card page-panel"><PanelHeader eyebrow="Settings" title="Connector and operator configuration" /><form className="settings-grid" onSubmit={saveSettings}><label>Dashboard Email<input value={settingsForm.dashboard_email} onChange={(event) => setSettingsForm((current) => ({ ...current, dashboard_email: event.target.value }))} /></label><label>Notification Email<input value={settingsForm.notification_email} onChange={(event) => setSettingsForm((current) => ({ ...current, notification_email: event.target.value }))} /></label><label>MISP URL<input value={settingsForm.misp_base_url} onChange={(event) => setSettingsForm((current) => ({ ...current, misp_base_url: event.target.value }))} /></label><label>MISP API Key<input value={settingsForm.misp_api_key} onChange={(event) => setSettingsForm((current) => ({ ...current, misp_api_key: event.target.value }))} /></label><label>Cortex URL<input value={settingsForm.cortex_base_url} onChange={(event) => setSettingsForm((current) => ({ ...current, cortex_base_url: event.target.value }))} /></label><label>Cortex API Key<input value={settingsForm.cortex_api_key} onChange={(event) => setSettingsForm((current) => ({ ...current, cortex_api_key: event.target.value }))} /></label><label>IRIS URL<input value={settingsForm.iris_base_url} onChange={(event) => setSettingsForm((current) => ({ ...current, iris_base_url: event.target.value }))} /></label><label>IRIS API Key<input value={settingsForm.iris_api_key} onChange={(event) => setSettingsForm((current) => ({ ...current, iris_api_key: event.target.value }))} /></label><label>Ollama Base URL<input value={settingsForm.ollama_base_url} onChange={(event) => setSettingsForm((current) => ({ ...current, ollama_base_url: event.target.value }))} /></label><label>Ollama Model<input value={settingsForm.ollama_model} onChange={(event) => setSettingsForm((current) => ({ ...current, ollama_model: event.target.value }))} /></label><label>Current Password<input type="password" value={settingsForm.current_password} onChange={(event) => setSettingsForm((current) => ({ ...current, current_password: event.target.value }))} /></label><label>New Password<input type="password" value={settingsForm.new_password} onChange={(event) => setSettingsForm((current) => ({ ...current, new_password: event.target.value }))} /></label><div className="settings-actions"><button type="submit">{busy === "settings" ? "Saving..." : "Save configuration"}</button><div className="settings-hint"><span>Stored in database</span><strong>Wazuh remains HTTP-ingest only</strong></div></div></form></section> : null}

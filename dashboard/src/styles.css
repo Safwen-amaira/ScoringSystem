@@ -161,7 +161,8 @@ label, .input-lock { display: grid; gap: 0.45rem; color: var(--muted); }
   filter: drop-shadow(0 4px 12px rgba(59, 130, 246, 0.3));
 }
 .chart-dot { fill: #fff; stroke: #3b82f6; stroke-width: 2.5; }
-.chart-grid-line, .chart-grid-vertical { stroke: var(--line-soft); stroke-dasharray: 4; }
+.chart-grid-line { stroke: rgba(255,255,255,0.07); stroke-width: 1; }
+.chart-grid-vertical { display: none; }
 .chart-x-label { fill: var(--muted); font-size: 0.72rem; }
 .chart-tooltip {
   background: #1f2937; color: #fff; padding: 0.6rem 0.8rem; border-radius: 12px;
@@ -169,7 +170,7 @@ label, .input-lock { display: grid; gap: 0.45rem; color: var(--muted); }
 }
 .chart-tooltip strong { color: #3b82f6; display: block; font-size: 1.1rem; }
 .ring-meter {
-  position: relative; width: 140px; aspect-ratio: 1; border-radius: 50%;
+  position: relative; width: 180px; aspect-ratio: 1; border-radius: 50%;
   display: grid; place-items: center;
   transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
   background: var(--bg-elevated);
@@ -390,12 +391,14 @@ pre {
 .message-row.user .message-body { align-items: flex-end; }
 
 .message-row.user .message-text {
-  background: var(--gold-primary);
-  color: #000;
-  padding: 0.8rem 1.2rem;
+  background: #212429;
+  color: #fff;
+  padding: 1rem 1.4rem;
   border-radius: 20px 20px 0 20px;
+  max-width: 70%;
   font-weight: 500;
-  box-shadow: 0 4px 15px rgba(212, 160, 23, 0.2);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 .message-row.user .message-body strong { color: var(--gold-primary); }
