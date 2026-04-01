@@ -53,15 +53,27 @@ class AIRecommendationService:
 
     def chat(self, messages: list[dict[str, str]]) -> str:
         system_prompt = (
-            "You are H-Brain, the cybersecurity assistant developed by Hanicar Security (https://hanicar.tn). "
-            "You are an expert in SOC operations, incident response, Wazuh, MISP, Cortex, IRIS, and MITRE ATT&CK. "
-            "ALWAYS think before answering. Show your reasoning process inside <thought> tags. "
-            "After the thinking process, provide a concise, operational, and practical final response. "
-            "Use markdown for formatting. If asked for the website, answer with https://hanicar.tn. "
-            "Be technically sharp, keep the final response brief and actionable."
+            "You are H-Brain, a elite cybersecurity engineering assistant developed by Hanicar Security (https://hanicar.tn). "
+            "Expertise: SOC operations, incident response, Wazuh, MISP, Cortex, IRIS, and MITRE ATT&CK. "
+            "MANDATORY: Always think before answering. Show your reasoning process inside <thought> tags. "
+            "Your thought process should analyze the query, identify relevant SOC telemetry, and plan a sharp, technical response. "
+            "Provide a final response that is concise, operational, and practical. "
+            "Use markdown, bold key terms, and maintain a premium, professional tone. "
+            "If asked about Hanicar Security, refer to https://hanicar.tn. "
+            "Be technically sharp, avoid generic filler, and keep the final response brief and actionable."
         )
         recent_messages = messages[-10:]
+        # Try current known working url/model first to avoid latency
+        try:
+            reply = self._ollama_chat(system_prompt, recent_messages, base_url=self.ollama_url, model=self.ollama_model)
+            if reply:
+                return reply
+        except Exception:
+            pass
+
         for base_url in self._candidate_base_urls():
+            if base_url == self.ollama_url:
+                continue
             model_candidates = self._candidate_models(base_url)
             if not model_candidates:
                 continue
@@ -298,30 +310,57 @@ class AIRecommendationService:
         text = user_message.strip().lower()
         if not text:
             return "H-Brain here. Share the alert, IOC, case context, or investigation goal, and I will help with triage, enrichment, scoring, containment, and response actions."
+        
+        # Improved Fallback with better context matching
         if any(token in text for token in ["who developed", "who made", "who are you", "developer", "developed you", "made you"]):
             return "H-Brain was developed by Hanicar Security, the Tunisian cybersecurity company. If you need the website, it is https://hanicar.tn."
-        if any(token in text for token in ["what is cve", "what are cves", "cves mean", "cve mean"]):
-            return "CVE means Common Vulnerabilities and Exposures. It is a public identifier for a known security flaw, like CVE-2024-3400. In SOC work, CVEs help us map alerts to known vulnerabilities, assess exposure, prioritize patching, and explain risk to analysts and management."
+        
+        if "cve" in text and any(token in text for token in ["what is", "mean", "define", "list"]):
+            return "CVE means **Common Vulnerabilities and Exposures**. It is a public identifier for a known security flaw (e.g., CVE-2024-3400). In SOC work, we use CVEs to map alerts to known vulnerabilities and prioritize patching."
+        
+        if "ddos" in text and any(token in text for token in ["stop", "prevent", "mitigate", "contain"]):
+            return (
+                "To mitigate a **DDoS attack**: \n"
+                "1. **Identify type**: Volumetric, Protocol, or Application-layer.\n"
+                "2. **Enable Mitigation**: Route traffic through a scrubbing center or WAF.\n"
+                "3. **Rate Limiting**: Apply rate-limiting at your edge firewalls/load balancers.\n"
+                "4. **IP Blocking**: Block known malicious source IPs in real-time."
+            )
+
+        if "malware" in text and any(token in text for token in ["contain", "stop", "handle", "mal"]):
+            return (
+                "**Malware Containment Checklist:**\n"
+                "1. **Isolate**: Segment the affected host from the network immediately.\n"
+                "2. **Process Kill**: Use EDR or Wazuh to terminate the malicious process.\n"
+                "3. **Block IOCs**: Null-route C2 IPs and domains in your firewall.\n"
+                "4. **Preserve Evidence**: Take a memory dump and disk image for forensics."
+            )
+
         if "mitre" in text or "attack" in text:
-            return "MITRE ATT&CK is a knowledge base of adversary tactics and techniques. In practice, we use it to map incidents to behaviors such as Initial Access, Execution, Lateral Movement, and Exfiltration so analysts can understand what stage of the intrusion they are dealing with."
+            if "stop" in text or "contain" in text:
+                 return "To contain an attack mapped to **MITRE ATT&CK**, identify the technique (e.g., T1059) and apply the specific Mitigation (M1041, etc.) defined in the framework."
+            return "**MITRE ATT&CK** is a globally accessible knowledge base of adversary tactics and techniques. It helps analysts understand the 'how' and 'why' of an intrusion stage (Initial Access, Persistence, Exfiltration, etc.)."
+        
         if "ioc" in text or "indicator" in text:
-            return "An IOC is an Indicator of Compromise, such as a malicious IP, domain, hash, URL, email, filename, or registry key. In triage, we extract IOCs from Wazuh, MISP, and Cortex outputs to pivot, enrich, block, and hunt for related activity."
+            return "An **IOC (Indicator of Compromise)** is evidence that a network has been breached (e.g., hashes, malicious IPs, strings). We use MISP and Cortex to enrich alerts with IOC context."
+        
         if "wazuh" in text:
-            return "Wazuh is your detection source. It gives raw alerts, rule levels, agent context, groups, and event fields. In H-Brain, Wazuh alerts are used for immediate signal scoring, incident creation, IOC extraction, and workflow decisions."
+            return "**Wazuh** is your HIDS/SIEM layer. It provides endpoint security monitoring and threat detection telemetry used by H-Brain for incident scoring."
+        
         if "misp" in text:
-            return "MISP is your threat intelligence source. It provides events, attributes, tags, threat levels, and known-bad indicators. In H-Brain, MISP enrichment boosts confidence in malicious infrastructure, links alerts to campaigns, and improves recommendation quality."
+            return "**MISP** is your threat intelligence platform. It shares events and attributes that H-Brain uses to identify known-bad infrastructure in your alerts."
+        
         if "cortex" in text:
-            return "Cortex is your analysis layer. It runs analyzers such as VirusTotal-style lookups and returns verdicts like malicious, suspicious, or safe. In H-Brain, Cortex is treated as a strong signal, especially when it confirms malicious artifacts."
+            return "**Cortex** provides automated analysis (analyzers/responders). It confirms if an artifact is malicious through external sandboxes or intelligence."
+        
         if "iris" in text:
-            return "IRIS is your case management layer. It helps you track incidents, evidence, tasks, and response progress. In H-Brain, incidents can be linked to IRIS cases so analysts can move from detection to investigation and containment without losing context."
+            return "**IRIS** is your case management system. H-Brain links incidents to IRIS cases to track investigative tasks and legal chain of custody."
+        
         if any(token in text for token in ["score", "scoring", "how score", "risk score"]):
-            return "H-Brain uses a hybrid banking-oriented scoring model: deterministic SOC rules plus machine learning refinement. Strong signals such as malicious Cortex verdicts, known-bad indicators, lateral movement, exfiltration, repeated alerts, and banking asset criticality drive the final score and the decision to continue, review, or stop the workflow."
-        if any(token in text for token in ["contain", "containment", "response", "incident response"]):
-            return "For containment, start with the highest-confidence signals: isolate affected assets, block malicious IOCs, disable exposed credentials, validate lateral movement paths, preserve evidence, and map the event to MITRE ATT&CK so the response playbook matches the intrusion stage."
-        if any(token in text for token in ["how can i stop", "contain mal", "stop mal", "prevent mal"]):
-            return "To stop a malware infection: 1. Isolate the host from the network. 2. Terminate malicious processes via EDR/Wazuh. 3. Block associated C2 IPs/domains in your firewall. 4. Preserve the artifact for forensic analysis. Use H-Brain's containment workflow for specific playbooks."
+            return "H-Brain uses a **Hybrid Banking Scoring Model**: deterministic SOC logic (Wazuh/MISP) combined with ML refinement to determine if an incident requires immediate containment or review."
+
         return (
-            "H-Brain here. It seems the primary AI engine is currently under load or unreachable. "
-            "I can still assist with triage, incident response, Wazuh, MISP, Cortex, IRIS, and MITRE guidelines. "
-            "Share your specific SOC telemetry (Alert ID, Case No, or IOC) and I will provide operational context."
+            "**H-Brain Notice**: The primary AI engine is currently under load or unreachable. \n\n"
+            "I can still assist with triage, incident response, and SOC guidelines. "
+            "Please share specific IOCs (IP, domain, hash) or Alert IDs for operational context."
         )
