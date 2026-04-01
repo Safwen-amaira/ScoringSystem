@@ -165,11 +165,14 @@ label, .input-lock { display: grid; gap: 0.45rem; color: var(--muted); }
 .chart-grid-vertical { display: none; }
 .chart-x-label { fill: var(--muted); font-size: 0.72rem; }
 .chart-tooltip.precise-tooltip {
-  background: #1f2937; color: #fff; padding: 0.3rem 0.5rem; border-radius: 6px;
-  border: 1px solid var(--line); font-size: 0.75rem; pointer-events: none;
-  min-width: unset; transform: translate(-50%, -100%);
+  background: rgba(21, 23, 27, 0.95); backdrop-filter: blur(8px);
+  color: #fff; padding: 0.8rem 1.2rem; border-radius: 12px;
+  border: 1px solid var(--line); font-size: 0.95rem; pointer-events: none;
+  min-width: 160px; transform: translate(-50%, -100%);
+  box-shadow: 0 12px 32px rgba(0,0,0,0.8);
+  z-index: 1000;
 }
-.chart-tooltip.precise-tooltip strong { color: var(--gold-primary); display: inline; font-size: 0.85rem; }
+.chart-tooltip.precise-tooltip strong { color: #fff; display: block; font-size: 1.1rem; margin-bottom: 0.2rem; }
 .ring-meter {
   position: relative; width: 180px; aspect-ratio: 1; border-radius: 50%;
   display: grid; place-items: center;
@@ -411,7 +414,7 @@ pre {
 .prompt-chip:hover { color: #fff; }
 .dot-blue { width: 10px; height: 10px; border-radius: 50%; background: #3182ce; box-shadow: 0 0 10px rgba(49, 130, 206, 0.4); }
 
-.hubspot-input-container { padding: 1.5rem 15% 2.5rem; background: #0a0a0a; border-top: 1px solid var(--line); flex-shrink: 0; }
+.hubspot-input-container { padding: 1.25rem 1.5rem 1.5rem; background: #0a0a0a; border-top: 1px solid var(--line); flex-shrink: 0; }
 .input-tag-row { margin-bottom: 1rem; }
 .input-tag {
   background: #1a1c1e; color: #fff; border-radius: 16px; padding: 0.4rem 1rem;
