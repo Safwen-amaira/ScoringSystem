@@ -293,3 +293,20 @@ class ChatRequest(BaseModel):
 
 class ChatResponse(BaseModel):
     message: ChatMessage
+
+
+class CreateMISPRequest(BaseModel):
+    title: str
+    threat_level_id: int = 4
+
+
+class CreateCortexRequest(BaseModel):
+    analyzer_id: str
+    data_type: str
+    data: str
+
+
+class CreateIRISRequest(BaseModel):
+    title: str
+    severity_id: int = 2
+    description: str = ""

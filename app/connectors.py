@@ -106,6 +106,40 @@ def fetch_iris_cases(base_url: str, api_key: str, limit: int = 50) -> list[dict[
     return []
 
 
+def _post_json(url: str, data: dict, headers: dict[str, str] | None = None, timeout: int = 20) -> Any:
+    req = request.Request(url, data=json.dumps(data).encode("utf-8"), headers=headers or {}, method="POST")
+    req.add_header("Content-Type", "application/json")
+    with request.urlopen(req, timeout=timeout) as response:
+        return json.loads(response.read().decode("utf-8"))
+
+
+def create_misp_event(base_url: str, api_key: str, title: str, threat_level_id: int = 4) -> dict[str, Any]:
+    if not base_url or not api_key:
+        raise ValueError("MISP configuration missing")
+    url = f"{base_url.rstrip('/')}/events/add"
+    headers = {"Authorization": api_key, "Accept": "application/json"}
+    payload = {"Event": {"info": title, "threat_level_id": threat_level_id}}
+    return _post_json(url, payload, headers=headers)
+
+
+def create_cortex_job(base_url: str, api_key: str, analyzer_id: str, data_type: str, data: str) -> dict[str, Any]:
+    if not base_url or not api_key:
+        raise ValueError("Cortex configuration missing")
+    url = f"{base_url.rstrip('/')}/api/analyzer/{analyzer_id}/run"
+    headers = {"Authorization": f"Bearer {api_key}", "Accept": "application/json"}
+    payload = {"dataType": data_type, "data": data}
+    return _post_json(url, payload, headers=headers)
+
+
+def create_iris_case(base_url: str, api_key: str, title: str, severity_id: int = 2, description: str = "") -> dict[str, Any]:
+    if not base_url or not api_key:
+        raise ValueError("IRIS configuration missing")
+    url = f"{base_url.rstrip('/')}/api/v2/cases"
+    headers = {"Authorization": f"Bearer {api_key}", "Accept": "application/json"}
+    payload = {"case_title": title, "case_severity_id": severity_id, "case_description": description}
+    return _post_json(url, payload, headers=headers)
+
+
 def _misp_severity(threat_level_id: Any) -> str:
     mapping = {"1": "critical", "2": "high", "3": "medium", "4": "low"}
     return mapping.get(str(threat_level_id or "4"), "medium")

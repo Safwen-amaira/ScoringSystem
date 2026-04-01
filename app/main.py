@@ -66,6 +66,9 @@ from .models import (
     SettingsResponse,
     SettingsUpdateRequest,
     WazuhAlertIngestRequest,
+    CreateMISPRequest,
+    CreateCortexRequest,
+    CreateIRISRequest,
 )
 from .score_model import TRAINING_CSV, ensure_training_dataset, get_score_model
 from .scoring import build_recommendation
@@ -91,7 +94,10 @@ app.mount("/assets", StaticFiles(directory=static_dir), name="assets")
 def startup() -> None:
     init_db()
     init_hbrain_store()
-    sync_recent_cves()
+    try:
+        sync_recent_cves()
+    except Exception:
+        pass
     sync_mitre_techniques()
     ensure_training_dataset()
     get_score_model()
@@ -507,3 +513,39 @@ def api_mitre(
 ) -> MitreTechniqueListResponse:
     items, total = list_mitre(page=page, page_size=min(max(page_size, 1), 100), search=search)
     return MitreTechniqueListResponse(items=items, total=total, page=page, page_size=min(max(page_size, 1), 100))
+
+
+@app.post("/api/dashboard/cves/sync")
+def api_cves_sync(_: dict = Depends(_current_user)) -> dict[str, str]:
+    sync_recent_cves()
+    return {"status": "ok"}
+
+
+@app.post("/api/dashboard/misp/create")
+def api_misp_create(request: CreateMISPRequest, _: dict = Depends(_current_user)) -> dict:
+    settings = get_settings()
+    from .connectors import create_misp_event
+
+    result = create_misp_event(settings.misp_base_url, settings.misp_api_key, request.title, request.threat_level_id)
+    sync_misp_from_settings()
+    return result
+
+
+@app.post("/api/dashboard/cortex/create")
+def api_cortex_create(request: CreateCortexRequest, _: dict = Depends(_current_user)) -> dict:
+    settings = get_settings()
+    from .connectors import create_cortex_job
+
+    result = create_cortex_job(settings.cortex_base_url, settings.cortex_api_key, request.analyzer_id, request.data_type, request.data)
+    sync_cortex_from_settings()
+    return result
+
+
+@app.post("/api/dashboard/iris/create")
+def api_iris_create(request: CreateIRISRequest, _: dict = Depends(_current_user)) -> dict:
+    settings = get_settings()
+    from .connectors import create_iris_case
+
+    result = create_iris_case(settings.iris_base_url, settings.iris_api_key, request.title, request.severity_id, request.description)
+    sync_iris_from_settings()
+    return result
