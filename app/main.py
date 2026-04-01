@@ -95,7 +95,7 @@ def startup() -> None:
     init_db()
     init_hbrain_store()
     try:
-        sync_recent_cves()
+        sync_recent_cves(limit=1000)
     except Exception:
         pass
     sync_mitre_techniques()
@@ -516,8 +516,8 @@ def api_mitre(
 
 
 @app.post("/api/dashboard/cves/sync")
-def api_cves_sync(_: dict = Depends(_current_user)) -> dict[str, str]:
-    sync_recent_cves()
+def api_cves_sync(limit: int = 1000, _: dict = Depends(_current_user)) -> dict[str, str]:
+    sync_recent_cves(limit=min(max(limit, 1), 5000))
     return {"status": "ok"}
 
 

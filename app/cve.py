@@ -28,6 +28,9 @@ def fetch_cve_by_id(cve_id: str) -> dict[str, Any] | None:
     if not isinstance(payload, dict):
         return None
 
+    if payload.get("dataType") == "CVE_RECORD":
+        return _parse_cve_5_entry(payload)
+
     cvss = payload.get("cvss") or payload.get("cvss3") or 0
     summary = payload.get("summary") or payload.get("description") or "External CVE match"
     return {
@@ -54,6 +57,15 @@ def fetch_recent_cves(limit: int = 3000) -> list[dict[str, Any]]:
 
     items: list[dict[str, Any]] = []
     for entry in payload[:limit]:
+        if not isinstance(entry, dict):
+            continue
+
+        if entry.get("dataType") == "CVE_RECORD":
+            parsed = _parse_cve_5_entry(entry)
+            if parsed:
+                items.append(parsed)
+            continue
+
         cve_id = str(entry.get("id") or entry.get("cve") or "").upper()
         if not cve_id:
             continue
@@ -71,6 +83,41 @@ def fetch_recent_cves(limit: int = 3000) -> list[dict[str, Any]]:
             }
         )
     return items
+
+
+def _parse_cve_5_entry(entry: dict[str, Any]) -> dict[str, Any] | None:
+    metadata = entry.get("cveMetadata") or {}
+    cve_id = metadata.get("cveId")
+    if not cve_id:
+        return None
+
+    containers = entry.get("containers") or {}
+    cna = containers.get("cna") or {}
+    
+    # Prioritize CNA title, then first description
+    title = cna.get("title")
+    descriptions = cna.get("descriptions") or []
+    summary = title or (descriptions[0].get("value") if descriptions else "No description available")
+    
+    # Attempt to find CVSS in metrics
+    cvss = 0.0
+    metrics_list = cna.get("metrics") or []
+    for metric in metrics_list:
+        cvss_data = metric.get("cvssV3_1") or metric.get("cvssV3_0") or metric.get("cvssV2_0")
+        if cvss_data and "baseScore" in cvss_data:
+            cvss = float(cvss_data["baseScore"])
+            break
+
+    return {
+        "cve_id": cve_id.upper(),
+        "summary": str(summary),
+        "cvss": cvss,
+        "severity": severity_from_cvss(cvss),
+        "published": metadata.get("datePublished") or "",
+        "modified": metadata.get("dateUpdated") or "",
+        "references": json.dumps(cna.get("references") or []),
+        "raw_payload": json.dumps(entry),
+    }
 
 
 def severity_from_cvss(cvss: float) -> str:

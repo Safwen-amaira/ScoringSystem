@@ -230,8 +230,8 @@ def ensure_cves(cve_ids: list[str]) -> list[dict[str, Any]]:
     return results
 
 
-def sync_recent_cves() -> None:
-    recent = fetch_recent_cves(limit=620)
+def sync_recent_cves(limit: int = 1000) -> None:
+    recent = fetch_recent_cves(limit=limit)
     for item in recent:
         upsert_cve(item)
 
