@@ -15,7 +15,7 @@ class AIRecommendationService:
         base_dir = Path(__file__).resolve().parent.parent
         self.provider_name = os.getenv("AI_PROVIDER", "file-agent")
         self.ollama_url = os.getenv("OLLAMA_BASE_URL", "http://ollama:11434")
-        self.ollama_model = os.getenv("OLLAMA_MODEL", "llama3.2:3b")
+        self.ollama_model = os.getenv("OLLAMA_MODEL", "qwen2.5:1.5b")
         self.timeout = int(os.getenv("AI_TIMEOUT_SECONDS", "30"))
         self.chat_timeout = int(os.getenv("AI_CHAT_TIMEOUT_SECONDS", "20"))
         self.summary_prompt = (base_dir / "agents" / "security_summary.md").read_text(encoding="utf-8")
@@ -57,7 +57,7 @@ class AIRecommendationService:
             "You are an expert in SOC operations, incident response, Wazuh, MISP, Cortex, IRIS, and MITRE ATT&CK. "
             "ALWAYS think before answering. Show your reasoning process inside <thought> tags. "
             "After the thinking process, provide a concise, operational, and practical final response. "
-            "If asked for the website, answer with https://hanicar.tn. "
+            "Use markdown for formatting. If asked for the website, answer with https://hanicar.tn. "
             "Be technically sharp, keep the final response brief and actionable."
         )
         recent_messages = messages[-10:]
@@ -318,7 +318,10 @@ class AIRecommendationService:
             return "H-Brain uses a hybrid banking-oriented scoring model: deterministic SOC rules plus machine learning refinement. Strong signals such as malicious Cortex verdicts, known-bad indicators, lateral movement, exfiltration, repeated alerts, and banking asset criticality drive the final score and the decision to continue, review, or stop the workflow."
         if any(token in text for token in ["contain", "containment", "response", "incident response"]):
             return "For containment, start with the highest-confidence signals: isolate affected assets, block malicious IOCs, disable exposed credentials, validate lateral movement paths, preserve evidence, and map the event to MITRE ATT&CK so the response playbook matches the intrusion stage."
+        if any(token in text for token in ["how can i stop", "contain mal", "stop mal", "prevent mal"]):
+            return "To stop a malware infection: 1. Isolate the host from the network. 2. Terminate malicious processes via EDR/Wazuh. 3. Block associated C2 IPs/domains in your firewall. 4. Preserve the artifact for forensic analysis. Use H-Brain's containment workflow for specific playbooks."
         return (
-            "H-Brain here. I can help with CTI, incident response, Wazuh, MISP, Cortex, IRIS, MITRE ATT&CK, scoring, containment, and banking SOC workflows. "
-            "Share the alert, question, or case details and I will respond with operational guidance."
+            "H-Brain here. It seems the primary AI engine is currently under load or unreachable. "
+            "I can still assist with triage, incident response, Wazuh, MISP, Cortex, IRIS, and MITRE guidelines. "
+            "Share your specific SOC telemetry (Alert ID, Case No, or IOC) and I will provide operational context."
         )

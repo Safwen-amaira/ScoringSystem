@@ -15,7 +15,7 @@ services:
       HANICAR_DATA_DIR: ${HANICAR_DATA_DIR:-/app/data}
       AI_PROVIDER: ${AI_PROVIDER:-ollama}
       OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://ollama:11434}
-      OLLAMA_MODEL: ${OLLAMA_MODEL:-llama3.1:8b}
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-qwen2.5:1.5b}
       AI_TIMEOUT_SECONDS: ${AI_TIMEOUT_SECONDS:-30}
     volumes:
       - hanicar_data:/app/data
@@ -58,9 +58,9 @@ services:
       - sh
       - -c
       - |
-        curl -fsS -H 'Content-Type: application/json' http://ollama:11434/api/pull -d '{"name":"'"$${OLLAMA_MODEL:-llama3.1:8b}"'","stream":false}'
+        curl -fsS -H 'Content-Type: application/json' http://ollama:11434/api/pull -d '{"name":"'"$${OLLAMA_MODEL:-qwen2.5:1.5b}"'","stream":false}'
     environment:
-      OLLAMA_MODEL: ${OLLAMA_MODEL:-llama3.1:8b}
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-qwen2.5:1.5b}
 
 volumes:
   ollama_data:

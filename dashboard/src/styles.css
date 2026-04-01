@@ -1,22 +1,26 @@
 :root {
-  --bg: #0f1012;
-  --bg-elevated: #17181b;
-  --sidebar: #121316;
-  --card: #17181b;
-  --card-2: #1d1f23;
-  --line: #26282d;
-  --line-soft: #202228;
-  --text: #f5f5f6;
-  --muted: #989ca5;
-  --critical: #7f1d1d;
+  --bg: #0d0a05;
+  --bg-elevated: #1a150a;
+  --sidebar: #0f0b06;
+  --card: #14110b;
+  --card-2: #1e1a10;
+  --line: #2d2618;
+  --line-soft: #241e12;
+  --text: #f0e6d2;
+  --muted: #a39580;
+  --critical: #8b0000;
   --high: #dc2626;
   --medium: #d4a017;
   --low: #2f855a;
-  --shadow: 0 24px 64px rgba(0, 0, 0, 0.34);
+  --gold-primary: #d4af37;
+  --gold-secondary: #c5a028;
+  --gold-gradient: linear-gradient(135deg, #f9e29c 0%, #d4af37 50%, #b8860b 100%);
+  --gold-glow: rgba(212, 175, 55, 0.15);
+  --shadow: 0 24px 64px rgba(0, 0, 0, 0.45);
 }
 * { box-sizing: border-box; }
 html, body, #root { margin: 0; min-height: 100%; }
-body { font-family: Inter, Manrope, sans-serif; background: #0d0e10; color: var(--text); }
+body { font-family: Inter, Manrope, sans-serif; background: var(--bg); color: var(--text); }
 button, input, select, textarea { font: inherit; }
 a { color: inherit; }
 input, select, textarea {
@@ -27,8 +31,12 @@ select option { background: #111214; color: var(--text); }
 textarea { min-height: 110px; resize: vertical; }
 button {
   border: 0; border-radius: 12px; cursor: pointer; padding: 0.82rem 1.05rem;
-  font-weight: 600; color: #101113; background: #f3f4f6;
+  font-weight: 600; color: #100d08; background: var(--gold-gradient);
+  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.2s ease;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 }
+button:hover { transform: translateY(-2px); box-shadow: 0 8px 16px rgba(212, 175, 55, 0.3); }
+button:active { transform: translateY(1px); }
 label, .input-lock { display: grid; gap: 0.45rem; color: var(--muted); }
 .eyebrow { margin: 0 0 0.45rem; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.14em; color: var(--muted); }
 .lede { margin: 0; color: var(--muted); line-height: 1.6; }
@@ -68,11 +76,13 @@ label, .input-lock { display: grid; gap: 0.45rem; color: var(--muted); }
 .topbar-actions { display: flex; align-items: center; gap: 0.75rem; position: relative; }
 .icon-button {
   position: relative; display: grid; place-items: center; width: 46px; height: 46px; border-radius: 14px;
-  background: #15171b; color: var(--text); border: 1px solid var(--line);
+  background: #1a150a; color: var(--gold-primary); border: 1px solid var(--line);
+  transition: all 0.2s ease;
 }
+.icon-button:hover { border-color: var(--gold-primary); color: #fff; background: var(--line); }
 .icon-button span {
   position: absolute; top: -5px; right: -2px; min-width: 18px; height: 18px; border-radius: 999px;
-  display: grid; place-items: center; background: #f3f4f6; color: #111; font-size: 0.7rem;
+  display: grid; place-items: center; background: var(--gold-gradient); color: #000; font-size: 0.7rem; font-weight: 700;
 }
 .notification-group, .profile-group { position: relative; }
 .notification-popover, .profile-menu {
@@ -138,7 +148,7 @@ label, .input-lock { display: grid; gap: 0.45rem; color: var(--muted); }
 .ring-meter { width: 170px; aspect-ratio: 1; border-radius: 50%; display: grid; place-items: center; }
 .ring-meter div {
   width: 72%; aspect-ratio: 1; border-radius: 50%; display: grid; place-items: center; text-align: center;
-  background: #14161a; border: 1px solid var(--line-soft);
+  background: #14110b; border: 1px solid var(--gold-glow);
 }
 .ring-meter span { color: var(--muted); }
 .ring-meter strong { font-size: 1.6rem; }
@@ -213,10 +223,18 @@ pre {
   display: grid; gap: 0.9rem; max-height: none; min-height: 58vh; overflow-y: auto; padding-right: 0.25rem;
 }
 .chat-bubble {
-  max-width: 78%; padding: 1rem; border-radius: 18px; background: #14161a; border: 1px solid var(--line-soft);
+  max-width: 82%; padding: 1.1rem; border-radius: 20px; background: rgba(30, 26, 16, 0.6);
+  border: 1px solid var(--line-soft); backdrop-filter: blur(12px);
+  position: relative;
 }
-.chat-bubble.assistant { justify-self: start; }
-.chat-bubble.user { justify-self: end; background: #f3f4f6; color: #111214; }
+.chat-bubble.assistant {
+  justify-self: start; background: linear-gradient(145deg, #1a150a 0%, #110e08 100%);
+  border-left: 3px solid var(--gold-primary);
+}
+.chat-bubble.user {
+  justify-self: end; background: var(--gold-gradient); color: #000;
+  box-shadow: 0 4px 15px rgba(212, 175, 55, 0.2);
+}
 .chat-bubble span { display: block; margin-bottom: 0.35rem; font-size: 0.8rem; color: var(--muted); }
 .chat-bubble.user span { color: #4b5563; }
 .chat-bubble p { margin: 0; line-height: 1.6; }
