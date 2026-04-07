@@ -311,6 +311,7 @@ def build_recommendation(request: ScoringRequest, ai_features: dict[str, Any] | 
         evidence=evidence,
         iocs=[],
         pkis=[],
+        compliance_recommendation=compliance_rec.model_dump(),
     ), compliance_rec, feature_map
 
 

@@ -2,12 +2,12 @@ FROM node:20-bookworm-slim
 
 WORKDIR /dashboard
 
-COPY package.json ./
+COPY package.json package-lock.json ./
 RUN npm install
 
 COPY . .
 
 EXPOSE 5173
 
-ENTRYPOINT []
-CMD ["npm", "run", "dev"]
+ENV HOST=0.0.0.0
+CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0"]
