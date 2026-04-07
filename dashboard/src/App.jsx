@@ -442,6 +442,118 @@ function App() {
     await sendChat(nextMessages.slice(-6));
   }
 
+  // Compliance recommendation component
+  function ComplianceRecommendationPanel({ data }) {
+    if (!data) return <p style={{color:"var(--muted)"}}>No compliance recommendation available.</p>;
+    return (
+      <div style={{marginTop:"1rem", marginBottom:"1rem", padding:"1rem", background:"#1a1f26", borderRadius:"12px", border:"1px solid #2a3040"}}>
+        <h4 style={{color:"var(--gold-primary)", margin:"0 0 0.5rem"}}>ML Compliance Recommendation</h4>
+        <div style={{display:"grid", gridTemplateColumns:"1fr 1fr", gap:"0.75rem", marginBottom:"0.75rem"}}>
+          <div>
+            <strong style={{color:"var(--muted)", fontSize:"0.75rem"}}>Threat Category</strong>
+            <p style={{margin:"0.25rem 0", textTransform:"capitalize"}}>{data.threat_category}</p>
+          </div>
+          <div>
+            <strong style={{color:"var(--muted)", fontSize:"0.75rem"}}>Severity</strong>
+            <p style={{margin:"0.25rem 0", color:severityColor(data.severity), textTransform:"uppercase"}}>{data.severity}</p>
+          </div>
+        </div>
+        <details className="accordion" open>
+          <summary style={{cursor:"pointer", color:"var(--gold-primary)"}}>ISO 27001 Controls</summary>
+          <ul style={{margin:"0.5rem 0", paddingLeft:"1.25rem"}}>
+            {data.compliance_framework?.iso_27001_controls?.map((c, i) => (
+              <li key={i} style={{fontSize:"0.85rem", marginBottom:"0.35rem"}}><strong>{c.control_id}</strong>: {c.name}</li>
+            ))}
+          </ul>
+        </details>
+        <details className="accordion">
+          <summary style={{cursor:"pointer", color:"var(--gold-primary)"}}>PCI DSS Controls</summary>
+          <ul style={{margin:"0.5rem 0", paddingLeft:"1.25rem"}}>
+            {data.compliance_framework?.pci_dss_controls?.map((c, i) => (
+              <li key={i} style={{fontSize:"0.85rem", marginBottom:"0.35rem"}}><strong>{c.control_id}</strong>: {c.name}</li>
+            ))}
+          </ul>
+        </details>
+        <details className="accordion">
+          <summary style={{cursor:"pointer", color:"var(--gold-primary)"}}>MITRE ATT&CK Mitigations</summary>
+          <ul style={{margin:"0.5rem 0", paddingLeft:"1.25rem"}}>
+            {data.compliance_framework?.mitre_attck_mitigations?.map((m, i) => (
+              <li key={i} style={{fontSize:"0.85rem", marginBottom:"0.35rem"}}><strong>{m.mitigation_id}</strong>: {m.name}</li>
+            ))}
+          </ul>
+        </details>
+        <details className="accordion">
+          <summary style={{cursor:"pointer", color:"var(--gold-primary)"}}>Immediate Actions</summary>
+          <ol style={{margin:"0.5rem 0", paddingLeft:"1.25rem"}}>
+            {data.immediate_actions?.map((a, i) => (
+              <li key={i} style={{fontSize:"0.85rem", marginBottom:"0.35rem"}}>{a}</li>
+            ))}
+          </ol>
+        </details>
+        <details className="accordion">
+          <summary style={{cursor:"pointer", color:"var(--gold-primary)"}}>Investigation Steps</summary>
+          <ol style={{margin:"0.5rem 0", paddingLeft:"1.25rem"}}>
+            {data.investigation_steps?.map((s, i) => (
+              <li key={i} style={{fontSize:"0.85rem", marginBottom:"0.35rem"}}>{s}</li>
+            ))}
+          </ol>
+        </details>
+        <details className="accordion">
+          <summary style={{cursor:"pointer", color:"var(--gold-primary)"}}>Remediation Steps</summary>
+          <ol style={{margin:"0.5rem 0", paddingLeft:"1.25rem"}}>
+            {data.remediation_steps?.map((r, i) => (
+              <li key={i} style={{fontSize:"0.85rem", marginBottom:"0.35rem"}}>{r}</li>
+            ))}
+          </ol>
+        </details>
+        <details className="accordion">
+          <summary style={{cursor:"pointer", color:"var(--gold-primary)"}}>Compliance Notes</summary>
+          <ul style={{margin:"0.5rem 0", paddingLeft:"1.25rem"}}>
+            {data.compliance_notes?.map((n, i) => (
+              <li key={i} style={{fontSize:"0.85rem", marginBottom:"0.35rem", color:"var(--muted)"}}>{n}</li>
+            ))}
+          </ul>
+        </details>
+      </div>
+    );
+  }
+
+  // PKI Metrics Panel
+  function PKIMetricsPanel({ data }) {
+    if (!data) return null;
+    return (
+      <div style={{marginTop:"0.5rem", marginBottom:"1rem", padding:"1rem", background:"#1a1f26", borderRadius:"12px", border:"1px solid #2a3040"}}>
+        <h4 style={{color:"var(--gold-primary)", margin:"0 0 0.75rem"}}>Response Metrics (PKI)</h4>
+        <div style={{display:"grid", gridTemplateColumns:"repeat(3, 1fr)", gap:"0.75rem"}}>
+          <div style={{textAlign:"center"}}>
+            <div style={{fontSize:"0.7rem", color:"var(--muted)"}}>MTTD</div>
+            <strong>{data.mttd_minutes} min</strong>
+          </div>
+          <div style={{textAlign:"center"}}>
+            <div style={{fontSize:"0.7rem", color:"var(--muted)"}}>MTDR</div>
+            <strong>{data.mtdr_minutes} min</strong>
+          </div>
+          <div style={{textAlign:"center"}}>
+            <div style={{fontSize:"0.7rem", color:"var(--muted)"}}>Accuracy</div>
+            <strong>{(data.model_accuracy * 100).toFixed(1)}%</strong>
+          </div>
+          <div style={{textAlign:"center"}}>
+            <div style={{fontSize:"0.7rem", color:"var(--muted)"}}>Confidence</div>
+            <strong>{(data.classification_confidence * 100).toFixed(1)}%</strong>
+          </div>
+          <div style={{textAlign:"center"}}>
+            <div style={{fontSize:"0.7rem", color:"var(--muted)"}}>IOC Count</div>
+            <strong>{data.ioc_count}</strong>
+          </div>
+          <div style={{textAlign:"center"}}>
+            <div style={{fontSize:"0.7rem", color:"var(--muted)"}}>Source Diversity</div>
+            <strong>{data.source_diversity_index}%</strong>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (!token) {
     return <div className="login-screen"><div className="login-card"><img src="https://hanicar.tn/logo.png" alt="Hanicar Security" className="login-logo" /><p className="eyebrow">Hanicar Security</p><h1>H-Brain</h1><p className="lede">Production-ready CTI, SOC operations, enrichment, and banking-grade incident scoring.</p><form onSubmit={handleLogin}><div className="input-lock"><label>Email</label><input value={DEFAULT_EMAIL} readOnly /></div><div className="input-lock"><label>Password</label><input value={DEFAULT_PASSWORD} readOnly type="password" /></div><button type="submit">Launch H-Brain</button></form>{loginError ? <p className="error-text">{loginError}</p> : null}</div></div>;
   }
@@ -470,7 +582,7 @@ function App() {
     })}{busy === "chat" ? <article className="message-row hubspot-row assistant loading"><div className="message-avatar"><img src={LOGO_URL} alt="H-Brain" /></div><div className="message-body"><div className="hubspot-analysis-block"><button className="analysis-pill pulsing"><Icon name="pulse" />Analyzing SOC telemetry...</button></div><div className="shimmering-bar" /></div></article> : null}</div></div><div className="hubspot-input-container"><div className="input-tag-row"><span className="input-tag">H-Brain by <a href="https://hanicar.tn" style={{ textDecoration: "none", color: "white" }}>Hanicar Security</a></span></div><form className="hubspot-input-pill" onSubmit={handleChatSubmit}><textarea value={chatDraft} onChange={(event) => setChatDraft(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); handleChatSubmit(event); } }} placeholder="Ask H-Brain Security Assistant..." /><div className="hubspot-toolbar"><div className="toolbar-left"><button type="button" className="tool-circle"><Icon name="plus" /></button><button type="button" className="content-assistant-badge">Security Assistant <small>Beta</small></button><button type="button" className="tool-icon"><Icon name="search" /></button></div><div className="toolbar-right"><button type="button" className="tool-icon"><Icon name="mic" /></button><button type="submit" className="hubspot-send-btn" disabled={busy === "chat" || !chatDraft.trim()}><Icon name="arrow-up" /></button></div></div></form></div></div></section> : null}
 
     {activeNav === "settings" ? <section className="panel firebase-card page-panel"><PanelHeader eyebrow="Settings" title="Connector and operator configuration" /><form className="settings-grid" onSubmit={saveSettings}><label>Dashboard Email<input value={settingsForm.dashboard_email} onChange={(event) => setSettingsForm((current) => ({ ...current, dashboard_email: event.target.value }))} /></label><label>Notification Email<input value={settingsForm.notification_email} onChange={(event) => setSettingsForm((current) => ({ ...current, notification_email: event.target.value }))} /></label><label>MISP URL<input value={settingsForm.misp_base_url} onChange={(event) => setSettingsForm((current) => ({ ...current, misp_base_url: event.target.value }))} /></label><label>MISP API Key<input value={settingsForm.misp_api_key} onChange={(event) => setSettingsForm((current) => ({ ...current, misp_api_key: event.target.value }))} /></label><label>Cortex URL<input value={settingsForm.cortex_base_url} onChange={(event) => setSettingsForm((current) => ({ ...current, cortex_base_url: event.target.value }))} /></label><label>Cortex API Key<input value={settingsForm.cortex_api_key} onChange={(event) => setSettingsForm((current) => ({ ...current, cortex_api_key: event.target.value }))} /></label><label>IRIS URL<input value={settingsForm.iris_base_url} onChange={(event) => setSettingsForm((current) => ({ ...current, iris_base_url: event.target.value }))} /></label><label>IRIS API Key<input value={settingsForm.iris_api_key} onChange={(event) => setSettingsForm((current) => ({ ...current, iris_api_key: event.target.value }))} /></label><label>Ollama Base URL<input value={settingsForm.ollama_base_url} onChange={(event) => setSettingsForm((current) => ({ ...current, ollama_base_url: event.target.value }))} /></label><label>Ollama Model<input value={settingsForm.ollama_model} onChange={(event) => setSettingsForm((current) => ({ ...current, ollama_model: event.target.value }))} /></label><label>Current Password<input type="password" value={settingsForm.current_password} onChange={(event) => setSettingsForm((current) => ({ ...current, current_password: event.target.value }))} /></label><label>New Password<input type="password" value={settingsForm.new_password} onChange={(event) => setSettingsForm((current) => ({ ...current, new_password: event.target.value }))} /></label><div className="settings-actions"><button type="submit">{busy === "settings" ? "Saving..." : "Save configuration"}</button><div className="settings-hint"><span>Stored in database</span><strong>Wazuh remains HTTP-ingest only</strong></div></div></form></section> : null}
-  </main>{selectedCase ? <div className="modal-shell" onClick={() => setSelectedCase(null)}><div className="modal-card" onClick={(event) => event.stopPropagation()}><PanelHeader eyebrow={`${selectedCase.severity.toUpperCase()} · ${selectedCase.score}/100 · ${selectedCase.decision.toUpperCase()}`} title={selectedCase.case_name} actions={<button className="ghost-button" onClick={() => setSelectedCase(null)} type="button">Close</button>} /><p className="lede">{selectedCase.summary}</p><div className="summary-grid"><div><span>Asset</span><strong>{selectedCase.asset_name}</strong></div><div><span>IRIS Case</span><strong>{selectedCase.iris_case_name || "Not linked"}</strong></div><div><span>Workflow</span><strong>{selectedCase.workflow_playbook}</strong></div><div><span>Score Model</span><strong>{selectedCase.score_model}</strong></div></div><DetailsBlock title="Recommendation" value={selectedCase.recommendation_body} open /><DetailsBlock title="MISP Event" value={selectedCase.raw_payload?.misp_event || {}} /><DetailsBlock title="Wazuh Alert" value={selectedCase.raw_payload?.wazuh_alert || {}} /><DetailsBlock title="Cortex Analysis" value={selectedCase.raw_payload?.cortex_analysis || {}} /><DetailsBlock title="MITRE ATT&CK" value={selectedCase.mitre_attacks || []} /><DetailsBlock title="CVEs" value={selectedCase.cves || []} /><DetailsBlock title="IOCs" value={selectedCase.iocs || []} /><DetailsBlock title="PKIs" value={selectedCase.pkis || []} /><DetailsBlock title="Email Payload" value={selectedCase.email_payload || {}} /><DetailsBlock title="Normalized Request" value={selectedCase.normalized_payload || {}} /></div></div> : null}{selectedExternal ? <div className="modal-shell" onClick={() => setSelectedExternal(null)}><div className="modal-card" onClick={(event) => event.stopPropagation()}><PanelHeader eyebrow={selectedExternal.type.toUpperCase()} title={selectedExternal.title} actions={<button className="ghost-button" onClick={() => setSelectedExternal(null)} type="button">Close</button>} /><DetailsBlock title="Raw Payload" value={selectedExternal.payload} open /></div></div> : null}{selectedMitre ? <div className="modal-shell" onClick={() => setSelectedMitre(null)}><div className="modal-card" onClick={(event) => event.stopPropagation()}><PanelHeader eyebrow={selectedMitre.external_id} title={selectedMitre.name} actions={<button className="ghost-button" onClick={() => setSelectedMitre(null)} type="button">Close</button>} /><p className="lede">{selectedMitre.description}</p><div className="summary-grid"><div><span>Tactics</span><strong>{selectedMitre.tactics.join(", ") || "-"}</strong></div><div><span>Platforms</span><strong>{selectedMitre.platforms.join(", ") || "-"}</strong></div><div><span>Reference</span><strong>{selectedMitre.url || "-"}</strong></div></div><DetailsBlock title="Detection Guidance" value={selectedMitre.detection || "No detection guidance available."} open /></div></div> : null}
+  </main>{selectedCase ? <div className="modal-shell" onClick={() => setSelectedCase(null)}><div className="modal-card modal-card-wide" onClick={(event) => event.stopPropagation()}><PanelHeader eyebrow={`${selectedCase.severity.toUpperCase()} · ${selectedCase.score}/100 · ${selectedCase.decision.toUpperCase()}`} title={selectedCase.case_name} actions={<button className="ghost-button" onClick={() => setSelectedCase(null)} type="button">Close</button>} /><p className="lede">{selectedCase.summary}</p><div className="summary-grid"><div><span>Asset</span><strong>{selectedCase.asset_name}</strong></div><div><span>IRIS Case</span><strong>{selectedCase.iris_case_name || "Not linked"}</strong></div><div><span>Workflow</span><strong>{selectedCase.workflow_playbook}</strong></div><div><span>Score Model</span><strong>{selectedCase.score_model}</strong></div></div><ComplianceRecommendationPanel data={selectedCase.result_payload?.compliance_recommendation} /><PKIMetricsPanel data={selectedCase.result_payload?.pki_metrics} /><DetailsBlock title="Full Response JSON" value={selectedCase.result_payload || {}} /><DetailsBlock title="Recommendation Body" value={selectedCase.recommendation_body} open /><DetailsBlock title="MISP Event" value={selectedCase.raw_payload?.misp_event || {}} /><DetailsBlock title="Wazuh Alert" value={selectedCase.raw_payload?.wazuh_alert || {}} /><DetailsBlock title="Cortex Analysis" value={selectedCase.raw_payload?.cortex_analysis || {}} /><DetailsBlock title="MITRE ATT&CK" value={selectedCase.mitre_attacks || []} /><DetailsBlock title="CVEs" value={selectedCase.cves || []} /><DetailsBlock title="IOCs" value={selectedCase.iocs || []} /><DetailsBlock title="PKIs" value={selectedCase.pkis || []} /><DetailsBlock title="Email Payload" value={selectedCase.email_payload || {}} /><DetailsBlock title="Normalized Request" value={selectedCase.normalized_payload || {}} /></div></div> : null}{selectedExternal ? <div className="modal-shell" onClick={() => setSelectedExternal(null)}><div className="modal-card" onClick={(event) => event.stopPropagation()}><PanelHeader eyebrow={selectedExternal.type.toUpperCase()} title={selectedExternal.title} actions={<button className="ghost-button" onClick={() => setSelectedExternal(null)} type="button">Close</button>} /><DetailsBlock title="Raw Payload" value={selectedExternal.payload} open /></div></div> : null}{selectedMitre ? <div className="modal-shell" onClick={() => setSelectedMitre(null)}><div className="modal-card" onClick={(event) => event.stopPropagation()}><PanelHeader eyebrow={selectedMitre.external_id} title={selectedMitre.name} actions={<button className="ghost-button" onClick={() => setSelectedMitre(null)} type="button">Close</button>} /><p className="lede">{selectedMitre.description}</p><div className="summary-grid"><div><span>Tactics</span><strong>{selectedMitre.tactics.join(", ") || "-"}</strong></div><div><span>Platforms</span><strong>{selectedMitre.platforms.join(", ") || "-"}</strong></div><div><span>Reference</span><strong>{selectedMitre.url || "-"}</strong></div></div><DetailsBlock title="Detection Guidance" value={selectedMitre.detection || "No detection guidance available."} open /></div></div> : null}
     {showCreateMisp && <div className="modal-shell" onClick={() => setShowCreateMisp(false)}><div className="modal-card" onClick={(event) => event.stopPropagation()}><PanelHeader eyebrow="MISP" title="Create Threat Intel Event" actions={<button className="ghost-button" onClick={() => setShowCreateMisp(false)} type="button">Cancel</button>} /><form className="settings-grid" style={{ marginTop: "1rem" }} onSubmit={(e) => { e.preventDefault(); handleCreateEntity("misp"); }}><label>Event Information (Title)<input value={createForm.title} onChange={(e) => setCreateForm(c => ({ ...c, title: e.target.value }))} required /></label><label>Threat Level<select value={createForm.severity} onChange={(e) => setCreateForm(c => ({ ...c, severity: e.target.value }))}><option value="1">1 - High</option><option value="2">2 - Medium</option><option value="3">3 - Low</option><option value="4">4 - Undefined</option></select></label><div className="settings-actions"><button type="submit">{busy === "misp" ? "Creating..." : "Create Event"}</button></div></form></div></div>}
     {showCreateCortex && <div className="modal-shell" onClick={() => setShowCreateCortex(false)}><div className="modal-card" onClick={(event) => event.stopPropagation()}><PanelHeader eyebrow="CORTEX" title="Run External Analysis" actions={<button className="ghost-button" onClick={() => setShowCreateCortex(false)} type="button">Cancel</button>} /><form className="settings-grid" style={{ marginTop: "1rem" }} onSubmit={(e) => { e.preventDefault(); handleCreateEntity("cortex"); }}><label>Analyzer ID<input value={createForm.analyzer_id} onChange={(e) => setCreateForm(c => ({ ...c, analyzer_id: e.target.value }))} required /></label><label>Data Type<select value={createForm.data_type} onChange={(e) => setCreateForm(c => ({ ...c, data_type: e.target.value }))}><option value="ip">IP Address</option><option value="domain">Domain</option><option value="hash">File Hash</option><option value="url">URL</option></select></label><label style={{ gridColumn: "1 / -1" }}>Observable Data<input value={createForm.data} onChange={(e) => setCreateForm(c => ({ ...c, data: e.target.value }))} placeholder="e.g. 8.8.8.8" required /></label><div className="settings-actions"><button type="submit">{busy === "cortex" ? "Analyzing..." : "Run Job"}</button></div></form></div></div>}
     {showCreateIris && <div className="modal-shell" onClick={() => setShowCreateIris(false)}><div className="modal-card" onClick={(event) => event.stopPropagation()}><PanelHeader eyebrow="IRIS" title="Open Forensic Case" actions={<button className="ghost-button" onClick={() => setShowCreateIris(false)} type="button">Cancel</button>} /><form className="settings-grid" style={{ marginTop: "1rem" }} onSubmit={(e) => { e.preventDefault(); handleCreateEntity("iris"); }}><label>Case Title<input value={createForm.title} onChange={(e) => setCreateForm(c => ({ ...c, title: e.target.value }))} required /></label><label>Severity ID<select value={createForm.severity} onChange={(e) => setCreateForm(c => ({ ...c, severity: e.target.value }))}><option value="1">1 - Critical</option><option value="2">2 - High</option><option value="3">3 - Medium</option><option value="4">4 - Low</option></select></label><label style={{ gridColumn: "1 / -1" }}>Description<textarea value={createForm.description} onChange={(e) => setCreateForm(c => ({ ...c, description: e.target.value }))} /></label><div className="settings-actions"><button type="submit">{busy === "iris" ? "Opening..." : "Create Case"}</button></div></form></div></div>}

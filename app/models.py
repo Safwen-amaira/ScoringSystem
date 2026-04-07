@@ -96,6 +96,54 @@ class RecommendationResponse(BaseModel):
     pkis: List[PKIMetric]
 
 
+class ComplianceControl(BaseModel):
+    """Represents a compliance control from ISO 27001 or PCI DSS."""
+    control_id: str
+    name: str
+    description: str
+
+
+class MitreMitigation(BaseModel):
+    """Represents a MITRE ATT&CK mitigation."""
+    mitigation_id: str
+    name: str
+    description: str
+
+
+class ComplianceFramework(BaseModel):
+    """Contains mapped compliance controls across frameworks."""
+    iso_27001_controls: List[ComplianceControl]
+    pci_dss_controls: List[ComplianceControl]
+    mitre_attck_mitigations: List[MitreMitigation]
+
+
+class ComplianceRecommendation(BaseModel):
+    """ML-driven compliance-based recommendation with actionable steps."""
+    threat_category: str
+    severity: str
+    score: int
+    decision: str
+    immediate_actions: List[str]
+    investigation_steps: List[str]
+    remediation_steps: List[str]
+    compliance_framework: ComplianceFramework
+    compliance_notes: List[str]
+
+
+class PKIMetricsResponse(BaseModel):
+    """PKI metrics for incident response measurement."""
+    source_coverage: float
+    ioc_count: float
+    malicious_signal_count: float
+    high_confidence_case: float
+    mttd_minutes: float
+    mtdr_minutes: float
+    source_diversity_index: float
+    triage_pressure_index: float
+    model_accuracy: float = 0.0
+    classification_confidence: float = 0.0
+
+
 class ScoreResponse(BaseModel):
     score: int
     decision: str
@@ -103,12 +151,14 @@ class ScoreResponse(BaseModel):
     summary: str
     ai_generated: bool
     ai_provider: str
-    score_model: str = "hbrain-banking-v1"
+    score_model: str = "hbrain-banking-hybrid-ml-v1"
     workflow_playbook: str = ""
     breakdown: List[ScoreBreakdown]
     evidence: List[EvidenceItem]
     iocs: List[IOCItem]
     pkis: List[PKIMetric]
+    compliance_recommendation: Optional[ComplianceRecommendation] = None
+    pki_metrics: Optional[PKIMetricsResponse] = None
 
 
 class EmailContentResponse(BaseModel):
