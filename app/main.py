@@ -218,7 +218,10 @@ def _normalize_raw(request: RawIntelligenceRequest) -> tuple[ScoringRequest, dic
     return normalized_request, result, cve_rows
 
 
-def _email_payload(request: ScoringRequest, result: RecommendationResponse) -> EmailContentResponse:
+def _email_payload(request: ScoringRequest, result: RecommendationResponse, compliance_rec: ComplianceRecommendation | None = None) -> EmailContentResponse:
+    # Attach compliance recommendation to result for email generation
+    if compliance_rec:
+        result.compliance_recommendation = compliance_rec.model_dump()
     html_body, html_ai_generated, html_ai_provider = ai_service.render_email_html(request, result)
     return EmailContentResponse(
         subject=result.recommendation_subject,
