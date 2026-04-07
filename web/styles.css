@@ -183,6 +183,144 @@ pre {
   color: #d9ebfb;
 }
 
+/* Compliance Recommendation Styles */
+#compliance-section {
+  margin-top: 1.2rem;
+  margin-bottom: 1.2rem;
+}
+
+.compliance-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 1rem;
+  background: var(--panel-strong);
+  border-radius: 12px;
+  margin-bottom: 0.75rem;
+  border: 1px solid var(--line);
+}
+
+.compliance-header .threat-name {
+  text-transform: capitalize;
+  font-weight: 600;
+}
+
+.compliance-header .severity {
+  font-weight: 700;
+  text-transform: uppercase;
+  padding: 0.2rem 0.6rem;
+  border-radius: 8px;
+  font-size: 0.8rem;
+}
+
+.compliance-tabs {
+  display: flex;
+  overflow-x: auto;
+  gap: 0;
+  border-bottom: 2px solid var(--line);
+  padding-bottom: 0;
+}
+
+.compliance-tab {
+  padding: 0.6rem 1rem;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 0.82rem;
+  white-space: nowrap;
+  font-weight: 400;
+  transition: all 0.2s;
+}
+
+.compliance-tab.active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+  font-weight: 600;
+}
+
+.compliance-tab:hover {
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.compliance-content {
+  padding: 1rem 0;
+}
+
+.compliance-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.compliance-item {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 0.75rem 1rem;
+}
+
+.compliance-item strong {
+  color: var(--accent);
+  margin-right: 0.35rem;
+}
+
+.compliance-item .desc {
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+
+.action-list {
+  margin: 0;
+  padding-left: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.action-list li {
+  font-size: 0.88rem;
+  color: #d9ebfb;
+  line-height: 1.4;
+}
+
+/* PKI Metrics Grid */
+.pki-metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+}
+
+.pki-metric {
+  text-align: center;
+  padding: 0.85rem;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+
+.pki-metric .icon {
+  font-size: 1.1rem;
+  margin-bottom: 0.3rem;
+}
+
+.pki-metric .label {
+  font-size: 0.65rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.pki-metric .value {
+  font-size: 0.95rem;
+  font-weight: 700;
+  margin-top: 0.15rem;
+}
+
 @media (max-width: 800px) {
   .grid.two {
     grid-template-columns: 1fr;
@@ -191,5 +329,9 @@ pre {
   .result-head {
     flex-direction: column;
     align-items: flex-start;
+  }
+
+  .pki-metrics-grid {
+    grid-template-columns: repeat(2, 1fr);
   }
 }

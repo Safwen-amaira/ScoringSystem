@@ -155,7 +155,21 @@
           <div class="score-pill" id="score-pill">0</div>
         </div>
         <p id="summary">Submit a case to generate a recommendation.</p>
-        <div id="breakdown"></div>
+
+        <!-- Compliance Recommendation Section -->
+        <div id="compliance-section" style="display:none;">
+          <h3>Compliance Recommendation</h3>
+          <div id="compliance-header" class="compliance-header"></div>
+          <div class="compliance-tabs" id="compliance-tabs"></div>
+          <div id="compliance-content" class="compliance-content"></div>
+        </div>
+
+        <!-- PKI Metrics Section -->
+        <div id="pki-metrics-section" style="display:none;">
+          <h3>Response Metrics (PKI)</h3>
+          <div id="pki-metrics" class="pki-metrics-grid"></div>
+        </div>
+
         <h3>IOCs</h3>
         <pre id="ioc-body"></pre>
         <h3>PKIs</h3>

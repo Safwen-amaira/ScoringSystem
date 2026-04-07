@@ -286,9 +286,17 @@ def score(request: ScoringRequest) -> ScoreResponse:
     return result["score_resp"]
 
 
-@app.post("/api/recommendation", response_model=ComplianceRecommendation)
-def get_recommendation_raw(request: RawIntelligenceRequest) -> ComplianceRecommendation:
-    """ML-driven compliance recommendation with ISO 27001, PCI DSS, MITRE ATT&CK mappings from raw intelligence."""
+@app.post("/api/recommendation", response_model=ScoreResponse)
+def get_recommendation(request: RawIntelligenceRequest) -> ScoreResponse:
+    """Full ML-driven compliance recommendation with ISO 27001, PCI DSS, MITRE ATT&CK mappings."""
+    normalized_request, result_dict, cve_rows = _normalize_raw(request)
+    _store_raw_case(request, normalized_request, result_dict["result"], cve_rows)
+    return result_dict["score_resp"]
+
+
+@app.post("/api/recommendation/analyze", response_model=ComplianceRecommendation)
+def get_compliance_analysis(request: RawIntelligenceRequest) -> ComplianceRecommendation:
+    """Get only the compliance recommendation (for tools that need separated analysis)."""
     normalized_request, result_dict, cve_rows = _normalize_raw(request)
     return result_dict["compliance_rec"]
 
@@ -306,10 +314,11 @@ def email_content(request: ScoringRequest) -> EmailContentResponse:
     return _email_payload(request, result["result"])
 
 
-@app.post("/api/analyze", response_model=RecommendationResponse)
-def analyze(request: ScoringRequest) -> RecommendationResponse:
+@app.post("/api/analyze", response_model=ScoreResponse)
+def analyze(request: ScoringRequest) -> ScoreResponse:
+    """Full analysis with compliance recommendation and PKI metrics."""
     result = _build_full_result(request)
-    return result["result"]
+    return result["score_resp"]
 
 
 @app.post("/api/score/raw", response_model=ScoreResponse)
