@@ -512,15 +512,44 @@ COMPLIANCE_MAPPING: dict[str, dict[str, Any]] = {
 }
 
 def classify_threat_category(scoring_request: Any, feature_map: dict[str, float]) -> str:
-    """Classify the threat into a category based on features and text analysis."""
-    combined_text = " ".join(filter(None, [
-        getattr(scoring_request, 'title', ''),
-        getattr(scoring_request, 'asset_name', ''),
-        getattr(scoring_request, 'workflow_id', '') or '',
-        getattr(scoring_request, 'notes', '') or '',
-        getattr(scoring_request.misp_enrichment, 'event_info', '') if getattr(scoring_request, 'misp_enrichment', None) else '',
-    ])).lower()
+    """Classify the threat into a category based on features, Wazuh alerts, and text analysis."""
+    # Build combined text from all available sources
+    title = getattr(scoring_request, 'title', '') or ''
+    asset_name = getattr(scoring_request, 'asset_name', '') or ''
+    workflow_id = getattr(scoring_request, 'workflow_id', '') or ''
+    notes = getattr(scoring_request, 'notes', '') or ''
+    misp_info = getattr(scoring_request.misp_enrichment, 'event_info', '') if getattr(scoring_request, 'misp_enrichment', None) else ''
     
+    combined_text = " ".join(filter(None, [title, asset_name, workflow_id, notes, misp_info])).lower()
+    
+    # Extract Wazuh groups for additional context
+    wazuh_alert = getattr(scoring_request, 'wazuh_alert', None)
+    wazuh_groups = []
+    wazuh_description = ''
+    if wazuh_alert:
+        wazuh_groups = [g.lower() for g in getattr(wazuh_alert, 'groups', []) or []]
+        wazuh_description = getattr(wazuh_alert, 'rule_description', '').lower()
+        combined_text += " " + wazuh_description + " " + " ".join(wazuh_groups)
+    combined_text = combined_text.lower()
+    
+    # === Wazuh group-based classification ===
+    if "malware" in wazuh_groups or "malware" in wazuh_description:
+        return "malware_infection"
+    if "brute_force" in wazuh_groups or "authentication_failed" in wazuh_groups:
+        if feature_map.get("authentication_failures", 0) >= 1:
+            return "brute_force_attack"
+    if "privilege_escalation" in wazuh_groups or "sudo" in wazuh_description:
+        return "privilege_escalation"
+    if "web" in wazuh_groups and ("sqli" in wazuh_description or "xss" in wazuh_description or "injection" in wazuh_description):
+        return "web_application_attack"
+    if "phishing" in wazuh_groups or "phishing" in wazuh_description:
+        return "phishing_attempt"
+    if "lateral" in wazuh_description or "pivot" in combined_text:
+        return "lateral_movement"
+    if "vulnerability" in wazuh_description or "cve" in wazuh_description or "exploit" in wazuh_description:
+        return "vulnerability_exploitation"
+    
+    # === Text-based classification ===
     # Check for malware indicators
     if any(token in combined_text for token in ['malware', 'virus', 'trojan', 'ransom', 'worm', 'rootkit']):
         return "malware_infection"

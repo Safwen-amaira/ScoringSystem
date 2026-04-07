@@ -287,10 +287,10 @@ def score(request: ScoringRequest) -> ScoreResponse:
 
 
 @app.post("/api/recommendation", response_model=ComplianceRecommendation)
-def get_recommendation(request: ScoringRequest) -> ComplianceRecommendation:
-    """ML-driven compliance recommendation with ISO 27001, PCI DSS, MITRE ATT&CK mappings."""
-    result = _build_full_result(request)
-    return result["compliance_rec"]
+def get_recommendation_raw(request: RawIntelligenceRequest) -> ComplianceRecommendation:
+    """ML-driven compliance recommendation with ISO 27001, PCI DSS, MITRE ATT&CK mappings from raw intelligence."""
+    normalized_request, result_dict, cve_rows = _normalize_raw(request)
+    return result_dict["compliance_rec"]
 
 
 @app.post("/api/pki-metrics")

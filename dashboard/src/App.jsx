@@ -442,78 +442,123 @@ function App() {
     await sendChat(nextMessages.slice(-6));
   }
 
-  // Compliance recommendation component
-  function ComplianceRecommendationPanel({ data }) {
-    if (!data) return <p style={{color:"var(--muted)"}}>No compliance recommendation available.</p>;
+  // Compliance Framework Tab Component
+  function ComplianceTab({ label, controls, icon, color }) {
+    const [expanded, setExpanded] = useState(null);
     return (
-      <div style={{marginTop:"1rem", marginBottom:"1rem", padding:"1rem", background:"#1a1f26", borderRadius:"12px", border:"1px solid #2a3040"}}>
-        <h4 style={{color:"var(--gold-primary)", margin:"0 0 0.5rem"}}>ML Compliance Recommendation</h4>
-        <div style={{display:"grid", gridTemplateColumns:"1fr 1fr", gap:"0.75rem", marginBottom:"0.75rem"}}>
+      <div className="compliance-tab-panel">
+        <h4 style={{color, margin:"0 0 1rem", display:"flex", alignItems:"center", gap:"0.5rem"}}>
+          <span style={{fontSize:"1.2rem"}}>{icon}</span>
+          {label}
+          <span style={{marginLeft:"auto", fontSize:"0.7rem", background:"#2a3040", padding:"0.2rem 0.6rem", borderRadius:"8px"}}>{controls?.length || 0} controls</span>
+        </h4>
+        <div style={{display:"flex", flexDirection:"column", gap:"0.5rem"}}>
+          {controls?.map((c, i) => (
+            <div key={i} style={{background:"#0f1114", borderRadius:"8px", border:"1px solid #2a3040", overflow:"hidden"}}>
+              <button
+                style={{width:"100%", padding:"0.75rem 1rem", background:"none", border:"none", color:"#e0e6ed", textAlign:"left", cursor:"pointer", display:"flex", justifyContent:"space-between", alignItems:"center", fontSize:"0.85rem"}}
+                onClick={() => setExpanded(expanded === i ? null : i)}
+              >
+                <div>
+                  <strong style={{color}}>{c.control_id || c.mitigation_id}</strong>
+                  <span style={{marginLeft:"0.5rem", color:"#c0c5ce"}}>{c.name}</span>
+                </div>
+                <span style={{transform: expanded === i ? "rotate(180deg)" : "none", transition:"transform 0.2s", fontSize:"0.7rem"}}>▼</span>
+              </button>
+              {expanded === i && (
+                <div style={{padding:"0.75rem 1rem", background:"#0a0c0e", borderTop:"1px solid #2a3040", fontSize:"0.8rem", color:"#8892a0"}}>
+                  {c.description}
+                </div>
+              )}
+            </div>
+          ))}
+          {!controls?.length && <p style={{color:"var(--muted)", fontSize:"0.85rem", textAlign:"center", padding:"1rem"}}>No controls mapped for this framework.</p>}
+        </div>
+      </div>
+    );
+  }
+
+  // Recommendations Tab Component
+  function RecommendationsTab({ title, items, icon, color }) {
+    return (
+      <div className="recommendations-tab-panel">
+        <h4 style={{color, margin:"0 0 1rem", display:"flex", alignItems:"center", gap:"0.5rem"}}>
+          <span style={{fontSize:"1.2rem"}}>{icon}</span>
+          {title}
+        </h4>
+        <ol style={{margin:0, paddingLeft:"1.25rem", display:"flex", flexDirection:"column", gap:"0.5rem"}}>
+          {items?.map((item, i) => (
+            <li key={i} style={{fontSize:"0.85rem", color:"#c0c5ce", lineHeight:"1.5"}}>{item}</li>
+          ))}
+          {!items?.length && <p style={{color:"var(--muted)", fontSize:"0.85rem"}}>No recommendations available.</p>}
+        </ol>
+      </div>
+    );
+  }
+
+  // Compliance Recommendation Panel with tabs
+  function ComplianceRecommendationPanel({ data }) {
+    const [activeTab, setActiveTab] = useState("iso");
+    if (!data) return (
+      <div style={{marginTop:"1rem", padding:"2rem", background:"#1a1f26", borderRadius:"12px", border:"1px solid #2a3040", textAlign:"center"}}>
+        <p style={{color:"var(--muted)"}}>No compliance recommendation available.</p>
+      </div>
+    );
+    const cf = data.compliance_framework || {};
+    const tabs = [
+      { id: "iso", label: "ISO 27001:2022", icon: "🛡️", color: "#3b82f6" },
+      { id: "pci", label: "PCI DSS v4.0", icon: "💳", color: "#10b981" },
+      { id: "mitre", label: "MITRE ATT&CK", icon: "🎯", color: "#f59e0b" },
+      { id: "immediate", label: "Immediate Actions", icon: "🚨", color: "#ef4444" },
+      { id: "investigation", label: "Investigation", icon: "🔍", color: "#8b5cf6" },
+      { id: "remediation", label: "Remediation", icon: "🔧", color: "#06b6d4" },
+    ];
+    return (
+      <div style={{marginTop:"1rem", marginBottom:"1rem", background:"#12151a", borderRadius:"12px", border:"1px solid #2a3040", overflow:"hidden"}}>
+        {/* Threat category header */}
+        <div style={{padding:"1rem 1.25rem", borderBottom:"1px solid #2a3040", display:"flex", justifyContent:"space-between", alignItems:"center"}}>
           <div>
-            <strong style={{color:"var(--muted)", fontSize:"0.75rem"}}>Threat Category</strong>
-            <p style={{margin:"0.25rem 0", textTransform:"capitalize"}}>{data.threat_category}</p>
+            <span style={{fontSize:"0.7rem", color:"var(--muted)", textTransform:"uppercase", letterSpacing:"0.1em"}}>Threat Category</span>
+            <h3 style={{margin:"0.25rem 0 0", color:"#e0e6ed", textTransform:"capitalize", fontSize:"1rem"}}>{data.threat_category.replace(/_/g, " ")}</h3>
           </div>
-          <div>
-            <strong style={{color:"var(--muted)", fontSize:"0.75rem"}}>Severity</strong>
-            <p style={{margin:"0.25rem 0", color:severityColor(data.severity), textTransform:"uppercase"}}>{data.severity}</p>
+          <div style={{textAlign:"right"}}>
+            <span style={{fontSize:"0.7rem", color:"var(--muted)", textTransform:"uppercase", letterSpacing:"0.1em"}}>Severity</span>
+            <div style={{margin:"0.25rem 0 0", color:severityColor(data.severity), fontWeight:"700", textTransform:"uppercase", fontSize:"1rem"}}>{data.severity}</div>
           </div>
         </div>
-        <details className="accordion" open>
-          <summary style={{cursor:"pointer", color:"var(--gold-primary)"}}>ISO 27001 Controls</summary>
-          <ul style={{margin:"0.5rem 0", paddingLeft:"1.25rem"}}>
-            {data.compliance_framework?.iso_27001_controls?.map((c, i) => (
-              <li key={i} style={{fontSize:"0.85rem", marginBottom:"0.35rem"}}><strong>{c.control_id}</strong>: {c.name}</li>
+        {/* Tab navigation */}
+        <div style={{display:"flex", overflowX:"auto", borderBottom:"1px solid #2a3040"}}>
+          {tabs.map(tab => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              style={{
+                padding:"0.75rem 1rem", background:"none", border:"none", borderBottom: activeTab === tab.id ? `2px solid ${tab.color}` : "2px solid transparent",
+                color: activeTab === tab.id ? tab.color : "#8892a0", cursor:"pointer", fontSize:"0.8rem", whiteSpace:"nowrap", fontWeight: activeTab === tab.id ? 600 : 400
+              }}
+            >
+              {tab.icon} {tab.label}
+            </button>
+          ))}
+        </div>
+        {/* Tab content */}
+        <div style={{padding:"1.25rem"}}>
+          {activeTab === "iso" && <ComplianceTab label="ISO 27001:2022 Controls" icon="🛡️" color="#3b82f6" controls={cf.iso_27001_controls} />}
+          {activeTab === "pci" && <ComplianceTab label="PCI DSS v4.0 Controls" icon="💳" color="#10b981" controls={cf.pci_dss_controls} />}
+          {activeTab === "mitre" && <ComplianceTab label="MITRE ATT&CK Mitigations" icon="🎯" color="#f59e0b" controls={cf.mitre_attck_mitigations} />}
+          {activeTab === "immediate" && <RecommendationsTab title="Immediate Actions" icon="🚨" color="#ef4444" items={data.immediate_actions} />}
+          {activeTab === "investigation" && <RecommendationsTab title="Investigation Steps" icon="🔍" color="#8b5cf6" items={data.investigation_steps} />}
+          {activeTab === "remediation" && <RecommendationsTab title="Remediation Steps" icon="🔧" color="#06b6d4" items={data.remediation_steps} />}
+        </div>
+        {/* Compliance notes footer */}
+        {data.compliance_notes?.length > 0 && (
+          <div style={{padding:"0.75rem 1.25rem", borderTop:"1px solid #2a3040", background:"#0a0c0e"}}>
+            <h4 style={{color:"#f59e0b", margin:"0 0 0.5rem", fontSize:"0.75rem", textTransform:"uppercase", letterSpacing:"0.05em"}}>Compliance Notes</h4>
+            {data.compliance_notes.map((n, i) => (
+              <p key={i} style={{margin:"0.25rem 0", fontSize:"0.8rem", color:"#8892a0"}}>{n}</p>
             ))}
-          </ul>
-        </details>
-        <details className="accordion">
-          <summary style={{cursor:"pointer", color:"var(--gold-primary)"}}>PCI DSS Controls</summary>
-          <ul style={{margin:"0.5rem 0", paddingLeft:"1.25rem"}}>
-            {data.compliance_framework?.pci_dss_controls?.map((c, i) => (
-              <li key={i} style={{fontSize:"0.85rem", marginBottom:"0.35rem"}}><strong>{c.control_id}</strong>: {c.name}</li>
-            ))}
-          </ul>
-        </details>
-        <details className="accordion">
-          <summary style={{cursor:"pointer", color:"var(--gold-primary)"}}>MITRE ATT&CK Mitigations</summary>
-          <ul style={{margin:"0.5rem 0", paddingLeft:"1.25rem"}}>
-            {data.compliance_framework?.mitre_attck_mitigations?.map((m, i) => (
-              <li key={i} style={{fontSize:"0.85rem", marginBottom:"0.35rem"}}><strong>{m.mitigation_id}</strong>: {m.name}</li>
-            ))}
-          </ul>
-        </details>
-        <details className="accordion">
-          <summary style={{cursor:"pointer", color:"var(--gold-primary)"}}>Immediate Actions</summary>
-          <ol style={{margin:"0.5rem 0", paddingLeft:"1.25rem"}}>
-            {data.immediate_actions?.map((a, i) => (
-              <li key={i} style={{fontSize:"0.85rem", marginBottom:"0.35rem"}}>{a}</li>
-            ))}
-          </ol>
-        </details>
-        <details className="accordion">
-          <summary style={{cursor:"pointer", color:"var(--gold-primary)"}}>Investigation Steps</summary>
-          <ol style={{margin:"0.5rem 0", paddingLeft:"1.25rem"}}>
-            {data.investigation_steps?.map((s, i) => (
-              <li key={i} style={{fontSize:"0.85rem", marginBottom:"0.35rem"}}>{s}</li>
-            ))}
-          </ol>
-        </details>
-        <details className="accordion">
-          <summary style={{cursor:"pointer", color:"var(--gold-primary)"}}>Remediation Steps</summary>
-          <ol style={{margin:"0.5rem 0", paddingLeft:"1.25rem"}}>
-            {data.remediation_steps?.map((r, i) => (
-              <li key={i} style={{fontSize:"0.85rem", marginBottom:"0.35rem"}}>{r}</li>
-            ))}
-          </ol>
-        </details>
-        <details className="accordion">
-          <summary style={{cursor:"pointer", color:"var(--gold-primary)"}}>Compliance Notes</summary>
-          <ul style={{margin:"0.5rem 0", paddingLeft:"1.25rem"}}>
-            {data.compliance_notes?.map((n, i) => (
-              <li key={i} style={{fontSize:"0.85rem", marginBottom:"0.35rem", color:"var(--muted)"}}>{n}</li>
-            ))}
-          </ul>
-        </details>
+          </div>
+        )}
       </div>
     );
   }
@@ -521,34 +566,29 @@ function App() {
   // PKI Metrics Panel
   function PKIMetricsPanel({ data }) {
     if (!data) return null;
+    const metrics = [
+      { label: "MTTD", value: `${data.mttd_minutes} min`, icon: "⏱️", color: "#3b82f6" },
+      { label: "MTDR", value: `${data.mtdr_minutes} min`, icon: "⏱️", color: "#10b981" },
+      { label: "MTTR", value: `${Math.round((data.mttd_minutes + data.mtdr_minutes) / 2)} min`, icon: "⏱️", color: "#f59e0b" },
+      { label: "Model Accuracy", value: `${(data.model_accuracy * 100).toFixed(1)}%`, icon: "🎯", color: "#06b6d4" },
+      { label: "Confidence", value: `${(data.classification_confidence * 100).toFixed(1)}%`, icon: "📊", color: "#8b5cf6" },
+      { label: "IOC Count", value: `${data.ioc_count}`, icon: "🔗", color: "#ef4444" },
+      { label: "Malicious Signals", value: `${data.malicious_signal_count}`, icon: "⚠️", color: "#ec4899" },
+      { label: "Source Diversity", value: `${data.source_diversity_index}%`, icon: "🌐", color: "#14b8a6" },
+      { label: "High Confidence", value: `${data.high_confidence_case ? "Yes" : "No"}`, icon: "✅", color: data.high_confidence_case ? "#10b981" : "#6b7280" },
+      { label: "Triage Pressure", value: `${data.triage_pressure_index}`, icon: "🔥", color: "#f97316" },
+    ];
     return (
-      <div style={{marginTop:"0.5rem", marginBottom:"1rem", padding:"1rem", background:"#1a1f26", borderRadius:"12px", border:"1px solid #2a3040"}}>
-        <h4 style={{color:"var(--gold-primary)", margin:"0 0 0.75rem"}}>Response Metrics (PKI)</h4>
-        <div style={{display:"grid", gridTemplateColumns:"repeat(3, 1fr)", gap:"0.75rem"}}>
-          <div style={{textAlign:"center"}}>
-            <div style={{fontSize:"0.7rem", color:"var(--muted)"}}>MTTD</div>
-            <strong>{data.mttd_minutes} min</strong>
-          </div>
-          <div style={{textAlign:"center"}}>
-            <div style={{fontSize:"0.7rem", color:"var(--muted)"}}>MTDR</div>
-            <strong>{data.mtdr_minutes} min</strong>
-          </div>
-          <div style={{textAlign:"center"}}>
-            <div style={{fontSize:"0.7rem", color:"var(--muted)"}}>Accuracy</div>
-            <strong>{(data.model_accuracy * 100).toFixed(1)}%</strong>
-          </div>
-          <div style={{textAlign:"center"}}>
-            <div style={{fontSize:"0.7rem", color:"var(--muted)"}}>Confidence</div>
-            <strong>{(data.classification_confidence * 100).toFixed(1)}%</strong>
-          </div>
-          <div style={{textAlign:"center"}}>
-            <div style={{fontSize:"0.7rem", color:"var(--muted)"}}>IOC Count</div>
-            <strong>{data.ioc_count}</strong>
-          </div>
-          <div style={{textAlign:"center"}}>
-            <div style={{fontSize:"0.7rem", color:"var(--muted)"}}>Source Diversity</div>
-            <strong>{data.source_diversity_index}%</strong>
-          </div>
+      <div style={{marginTop:"0.5rem", marginBottom:"1rem", padding:"1rem", background:"#12151a", borderRadius:"12px", border:"1px solid #2a3040"}}>
+        <h4 style={{color:"var(--gold-primary)", margin:"0 0 0.75rem", fontSize:"0.85rem", textTransform:"uppercase", letterSpacing:"0.05em"}}>Response Metrics (PKI)</h4>
+        <div style={{display:"grid", gridTemplateColumns:"repeat(auto-fit, minmax(140px, 1fr))", gap:"0.75rem"}}>
+          {metrics.map((m, i) => (
+            <div key={i} style={{textAlign:"center", padding:"0.75rem", background:"#0f1114", borderRadius:"10px", border:"1px solid #2a3040"}}>
+              <div style={{fontSize:"1.1rem", marginBottom:"0.35rem"}}>{m.icon}</div>
+              <div style={{fontSize:"0.65rem", color:"#8892a0", textTransform:"uppercase", letterSpacing:"0.05em"}}>{m.label}</div>
+              <div style={{fontSize:"0.95rem", color:m.color, fontWeight:"700", marginTop:"0.15rem"}}>{m.value}</div>
+            </div>
+          ))}
         </div>
       </div>
     );
