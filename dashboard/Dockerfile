@@ -3,7 +3,7 @@ FROM node:20-bookworm-slim
 WORKDIR /dashboard
 
 COPY package.json ./
-RUN npm install --legacy-peer-deps
+RUN npm install
 
 COPY . .
 
