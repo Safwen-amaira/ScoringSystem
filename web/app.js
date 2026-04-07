@@ -1,12 +1,19 @@
-const form = document.getElementById("score-form");
-const decisionEl = document.getElementById("decision");
-const scorePillEl = document.getElementById("score-pill");
-const summaryEl = document.getElementById("summary");
-const breakdownEl = document.getElementById("breakdown");
-const mailBodyEl = document.getElementById("mail-body");
-const providerEl = document.getElementById("provider");
-const iocBodyEl = document.getElementById("ioc-body");
-const pkiBodyEl = document.getElementById("pki-body");
+let form, decisionEl, scorePillEl, summaryEl, breakdownEl, mailBodyEl, providerEl, iocBodyEl, pkiBodyEl;
+
+function initElements() {
+  form = document.getElementById("score-form");
+  decisionEl = document.getElementById("decision");
+  scorePillEl = document.getElementById("score-pill");
+  summaryEl = document.getElementById("summary");
+  breakdownEl = document.getElementById("breakdown");
+  mailBodyEl = document.getElementById("mail-body");
+  providerEl = document.getElementById("provider");
+  iocBodyEl = document.getElementById("ioc-body");
+  pkiBodyEl = document.getElementById("pki-body");
+}
+
+document.addEventListener("DOMContentLoaded", initElements);
+initElements();
 
 function splitCsv(value) {
   return value
@@ -211,11 +218,11 @@ function renderResult(result, emailResult) {
 
 form.addEventListener("submit", async (event) => {
   event.preventDefault();
-  decisionEl.textContent = "Scoring...";
-  breakdownEl.innerHTML = "";
-  mailBodyEl.textContent = "";
-  iocBodyEl.textContent = "";
-  pkiBodyEl.textContent = "";
+  if (decisionEl) decisionEl.textContent = "Scoring...";
+  if (breakdownEl) breakdownEl.innerHTML = "";
+  if (mailBodyEl) mailBodyEl.textContent = "";
+  if (iocBodyEl) iocBodyEl.textContent = "";
+  if (pkiBodyEl) pkiBodyEl.textContent = "";
 
   const formData = new FormData(form);
   const rawMode = hasRawInput(formData);
@@ -229,15 +236,15 @@ form.addEventListener("submit", async (event) => {
       body: JSON.stringify(payload),
     });
   } catch (error) {
-    decisionEl.textContent = "Error";
-    summaryEl.textContent = error.message;
+    if (decisionEl) decisionEl.textContent = "Error";
+    if (summaryEl) summaryEl.textContent = error.message;
     return;
   }
 
   if (!response.ok) {
     const text = await response.text();
-    decisionEl.textContent = "Error";
-    summaryEl.textContent = text;
+    if (decisionEl) decisionEl.textContent = "Error";
+    if (summaryEl) summaryEl.textContent = text;
     return;
   }
 
