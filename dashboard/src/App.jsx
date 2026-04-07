@@ -1,4 +1,6 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, Suspense, lazy } from "react";
+
+const ThreeBackground = lazy(() => import("./ThreeBackground"));
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "";
 const DEFAULT_EMAIL = "admin@hanicar.tn";
@@ -52,6 +54,13 @@ function Icon({ name }) {
     robot: <path d="M12 2a2 2 0 0 1 2 2h4a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h4a2 2 0 0 1 2-2zM9 13v.01M15 13v.01M9 16h6" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />,
     copy: <g><path d="M8 4v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V7.242a2 2 0 0 0-.602-1.43L16.083 2.57A2 2 0 0 0 14.685 2H10a2 2 0 0 0-2 2z" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /><path d="M16 18v2a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h2" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></g>,
     refresh: <path d="M1 4v6h6M23 20v-6h-6M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />,
+    "chevron-right": <path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />,
+    lock: <path d="M7 11V7a5 5 0 0 1 10 0v4M5 11h14v10H5z" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />,
+    file: <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />,
+    plus: <path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />,
+    search: <g><circle cx="11" cy="11" r="8" fill="none" stroke="currentColor" strokeWidth="2" /><path d="M21 21l-4.35-4.35" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" /></g>,
+    mic: <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3zM19 10v2a7 7 0 0 1-14 0v-2M12 19v4M8 23h8" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />,
+    "arrow-up": <path d="M12 19V5M5 12l7-7 7 7" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />,
   };
   return <svg viewBox="0 0 24 24" className="icon">{paths[name] || paths.grid}</svg>;
 }
@@ -61,7 +70,7 @@ function severityTone(value) {
 }
 
 function severityColor(value) {
-  return ({ critical: "var(--critical-dark)", high: "var(--high-red)", medium: "var(--gold-primary)", low: "var(--low-green)" }[(value || "low").toLowerCase()] || "var(--low-green)");
+  return ({ critical: "var(--critical)", high: "var(--high)", medium: "var(--medium)", low: "var(--low)" }[(value || "low").toLowerCase()] || "var(--low)");
 }
 
 function formatDate(value) {
@@ -433,7 +442,6 @@ function App() {
     await sendChat(nextMessages.slice(-6));
   }
 
-  // Compliance Framework Tab Component
   function ComplianceTab({ label, controls, icon, color }) {
     const [expanded, setExpanded] = useState(null);
     return (
@@ -464,7 +472,6 @@ function App() {
     );
   }
 
-  // Recommendations Tab Component
   function RecommendationsTab({ title, items, icon, color }) {
     return (
       <div className="recommendations-tab-panel">
@@ -482,7 +489,6 @@ function App() {
     );
   }
 
-  // AI Summary Component
   function AISummaryPanel({ data, caseData }) {
     if (!data) return null;
     const threatName = (data.threat_category || "unknown").replace(/_/g, " ");
@@ -524,7 +530,6 @@ function App() {
     );
   }
 
-  // Compliance Recommendation Panel with tabs
   function ComplianceRecommendationPanel({ data, caseData }) {
     const [activeTab, setActiveTab] = useState("iso");
     if (!data) return (
@@ -574,7 +579,6 @@ function App() {
     );
   }
 
-  // PKI Metrics Panel
   function PKIMetricsPanel({ data }) {
     if (!data) return null;
     const metrics = [
@@ -606,38 +610,294 @@ function App() {
   }
 
   if (!token) {
-    return <div className="login-screen"><div className="login-card"><img src="https://hanicar.tn/logo.png" alt="Hanicar Security" className="login-logo" /><p className="eyebrow">Hanicar Security</p><h1>H-Brain</h1><p className="lede">Production-ready CTI, SOC operations, enrichment, and banking-grade incident scoring.</p><form onSubmit={handleLogin}><div className="input-lock"><label>Email</label><input value={DEFAULT_EMAIL} readOnly /></div><div className="input-lock"><label>Password</label><input value={DEFAULT_PASSWORD} readOnly type="password" /></div><button type="submit">Launch H-Brain</button></form>{loginError ? <p className="error-text">{loginError}</p> : null}</div></div>;
+    return (
+      <div className="login-screen">
+        <Suspense fallback={<div style={{position:"fixed",inset:0,background:"var(--bg)"}} />}>
+          <ThreeBackground />
+        </Suspense>
+        <div className="login-card">
+          <img src={LOGO_URL} alt="Hanicar Security" className="login-logo" />
+          <p className="eyebrow">Hanicar Security</p>
+          <h1>H-Brain</h1>
+          <p className="lede">Production-ready CTI, SOC operations, enrichment, and banking-grade incident scoring.</p>
+          <form onSubmit={handleLogin}>
+            <div className="input-lock"><label>Email</label><input value={DEFAULT_EMAIL} readOnly /></div>
+            <div className="input-lock"><label>Password</label><input value={DEFAULT_PASSWORD} readOnly type="password" /></div>
+            <button type="submit">Launch H-Brain</button>
+          </form>
+          {loginError ? <p className="error-text">{loginError}</p> : null}
+        </div>
+      </div>
+    );
   }
-  return <div className="firebase-shell exact-shell"><aside className="sidebar firebase-sidebar exact-sidebar"><div className="sidebar-scroll"><div className="brand-block brand-logo-block"><img src="https://hanicar.tn/logo.png" alt="Hanicar Security" className="brand-logo" /><div><p className="eyebrow">Hanicar Security</p><h2>H-Brain</h2></div></div><p className="nav-caption">Main Menu</p><nav className="main-nav">{NAV_ITEMS.map((item) => <button key={item.id} className={`nav-item ${activeNav === item.id ? "active" : ""}`} onClick={() => { setActiveNav(item.id); setShowProfileMenu(false); }} type="button"><Icon name={item.icon} /><span>{item.label}</span></button>)}</nav><div className="sidebar-lower-links"></div></div></aside><main className={`firebase-main exact-main ${isDiscussion ? "discussion-mode" : ""}`}>{!isDiscussion ? <><header className="topbar exact-topbar"><div><p className="eyebrow">Operational Console</p><h1>{activeNav === "overview" ? "Overview" : NAV_ITEMS.find((item) => item.id === activeNav)?.label}</h1><p className="lede">Realtime CTI and SOC workspace for banking incident response.</p></div><div className="topbar-actions compact-actions"><div className="notification-group" ref={notificationRef}><button className="icon-button" onClick={() => { setShowNotifications((current) => !current); setShowProfileMenu(false); }} type="button"><Icon name="bell" /><span>{notifications.total}</span></button>{showNotifications ? <div className="notification-popover scrollable-dropdown"><div className="dropdown-header"><div><strong>Notifications</strong><small>{notifications.total} unread or active</small></div><button className="ghost-button tiny-button" onClick={markAllNotificationsRead} type="button">Mark all read</button></div>{notifications.items.length ? notifications.items.map((item) => <button key={item.id} className={`notification-item ${item.is_read ? "read" : ""}`} onClick={() => markNotificationAndOpen(item)} type="button"><strong>{item.title}</strong><span>{item.body}</span><small>{item.severity.toUpperCase()} · {formatDate(item.created_at)}</small></button>) : <p className="empty-note">No notifications available.</p>}</div> : null}</div><div className="profile-group" ref={profileRef}><button className="avatar-chip dropdown-trigger" onClick={() => { setShowProfileMenu((current) => !current); setShowNotifications(false); }} type="button"><img src="https://hanicar.tn/logo.png" alt="Hanicar avatar" /><span>Admin</span><Icon name="chevron" /></button>{showProfileMenu ? <div className="profile-menu"><button type="button" onClick={() => { setActiveNav("settings"); setShowProfileMenu(false); }}>Settings</button><button type="button" onClick={logout}>Logout</button></div> : null}</div></div></header>{activeNav === "overview" ? <section className="stats-grid firebase-stats exact-stats">{stats.map((stat) => <article key={stat.label} className="stat-card firebase-card exact-stat-card"><span>{stat.label}</span><strong>{stat.value}</strong><small>{stat.meta}</small></article>)}</section> : null}</> : null}
 
-    {activeNav === "overview" ? <><section className="overview-grid overview-primary-grid"><article className="panel firebase-card hero-panel"><div className="hero-header"><div><p className="eyebrow">Risk movement</p><h3>Total Incident Pressure</h3></div><div className="hero-switches"></div></div><TrendChart points={scoreSeries} labels={scoreLabels} items={incidentState.items} /></article><article className="panel firebase-card summary-stack"><PanelHeader eyebrow="Response" title="Containment posture" /><div style={{ flex: 1, display: "grid", placeItems: "center" }}><RingChart value={coverageValue} label="Intel coverage" /></div></article></section><section className="overview-grid overview-secondary-grid" style={{ gridTemplateColumns: "1.4fr 1fr 1fr" }}><article className="panel firebase-card heatmap-panel"><PanelHeader eyebrow="Intensity map" title="Operational map" /><HeatmapCard items={incidentState.items} /></article><article className="panel firebase-card"><PanelHeader eyebrow="Targeting" title="Top targeted assets" /><TopTargetAssetsCard items={incidentState.items} /></article><article className="panel firebase-card"><PanelHeader eyebrow="Distribution" title="Pipeline load" /><SourceBars items={sourcePulse} /></article></section><section className="panel firebase-card page-panel"><PanelHeader eyebrow="Recent incidents" title="Latest response cases" actions={<button className="ghost-button" onClick={() => setActiveNav("incidents")} type="button">Open incident desk</button>} /><DataTable columns={[{ key: "case_name", label: "Incident", render: (item) => <button className="inline-link" onClick={() => openCase(item.id)} type="button">{item.case_name}</button> }, { key: "severity", label: "Severity", render: (item) => <span className={`severity-pill ${severityTone(item.severity)}`}>{item.severity}</span> }, { key: "score", label: "Score" }, { key: "decision", label: "Decision" }, { key: "workflow_playbook", label: "Workflow" }, { key: "created_at", label: "Time", render: (item) => formatDate(item.created_at) }]} rows={incidentState.items} /></section></> : null}
+  return (
+    <div className="firebase-shell exact-shell">
+      <Suspense fallback={null}>
+        <ThreeBackground />
+      </Suspense>
+      <aside className="sidebar firebase-sidebar exact-sidebar">
+        <div className="sidebar-scroll">
+          <div className="brand-block brand-logo-block">
+            <img src={LOGO_URL} alt="Hanicar Security" className="brand-logo" />
+            <div><p className="eyebrow">Hanicar Security</p><h2>H-Brain</h2></div>
+          </div>
+          <p className="nav-caption">Main Menu</p>
+          <nav className="main-nav">
+            {NAV_ITEMS.map((item) => (
+              <button key={item.id} className={`nav-item ${activeNav === item.id ? "active" : ""}`} onClick={() => { setActiveNav(item.id); setShowProfileMenu(false); }} type="button">
+                <Icon name={item.icon} /><span>{item.label}</span>
+              </button>
+            ))}
+          </nav>
+          <div className="sidebar-lower-links"></div>
+        </div>
+      </aside>
+      <main className={`firebase-main exact-main ${isDiscussion ? "discussion-mode" : ""}`}>
+        {!isDiscussion ? <>
+          <header className="topbar exact-topbar">
+            <div><p className="eyebrow">Operational Console</p><h1>{activeNav === "overview" ? "Overview" : NAV_ITEMS.find((item) => item.id === activeNav)?.label}</h1><p className="lede">Realtime CTI and SOC workspace for banking incident response.</p></div>
+            <div className="topbar-actions compact-actions">
+              <div className="notification-group" ref={notificationRef}>
+                <button className="icon-button" onClick={() => { setShowNotifications((current) => !current); setShowProfileMenu(false); }} type="button"><Icon name="bell" /><span>{notifications.total}</span></button>
+                {showNotifications ? <div className="notification-popover scrollable-dropdown">
+                  <div className="dropdown-header"><div><strong>Notifications</strong><small>{notifications.total} unread or active</small></div><button className="ghost-button tiny-button" onClick={markAllNotificationsRead} type="button">Mark all read</button></div>
+                  {notifications.items.length ? notifications.items.map((item) => <button key={item.id} className={`notification-item ${item.is_read ? "read" : ""}`} onClick={() => markNotificationAndOpen(item)} type="button"><strong>{item.title}</strong><span>{item.body}</span><small>{item.severity.toUpperCase()} · {formatDate(item.created_at)}</small></button>) : <p className="empty-note">No notifications available.</p>}
+                </div> : null}
+              </div>
+              <div className="profile-group" ref={profileRef}>
+                <button className="avatar-chip dropdown-trigger" onClick={() => { setShowProfileMenu((current) => !current); setShowNotifications(false); }} type="button"><img src={LOGO_URL} alt="Hanicar avatar" /><span>Admin</span><Icon name="chevron" /></button>
+                {showProfileMenu ? <div className="profile-menu"><button type="button" onClick={() => { setActiveNav("settings"); setShowProfileMenu(false); }}>Settings</button><button type="button" onClick={logout}>Logout</button></div> : null}
+              </div>
+            </div>
+          </header>
+          {activeNav === "overview" ? <section className="stats-grid firebase-stats exact-stats">{stats.map((stat) => <article key={stat.label} className="stat-card firebase-card exact-stat-card"><span>{stat.label}</span><strong>{stat.value}</strong><small>{stat.meta}</small></article>)}</section> : null}
+        </> : null}
 
-    {activeNav === "incidents" ? <section className="panel firebase-card page-panel"><PanelHeader eyebrow="Incidents" title="Realtime incident management" actions={<><label className="filter-inline">Severity<select value={caseFilters.severity} onChange={(event) => setCaseFilters((current) => ({ ...current, severity: event.target.value }))}><option value="">All</option><option value="critical">Critical</option><option value="high">High</option><option value="medium">Medium</option><option value="low">Low</option></select></label><label className="filter-inline">Decision<select value={caseFilters.decision} onChange={(event) => setCaseFilters((current) => ({ ...current, decision: event.target.value }))}><option value="">All</option><option value="stop">Stop</option><option value="review">Review</option><option value="continue">Continue</option></select></label><label className="filter-inline">Score<input value={caseFilters.minScore} onChange={(event) => setCaseFilters((current) => ({ ...current, minScore: event.target.value }))} placeholder="Min" /></label><label className="filter-inline grow">Search<input value={caseFilters.search} onChange={(event) => setCaseFilters((current) => ({ ...current, search: event.target.value }))} placeholder="Case, IRIS, asset" /></label></>} /><DataTable columns={[{ key: "case_name", label: "Incident", render: (item) => <button className="inline-link" onClick={() => openCase(item.id)} type="button">{item.case_name}</button> }, { key: "severity", label: "Severity", render: (item) => <span className={`severity-pill ${severityTone(item.severity)}`}>{item.severity}</span> }, { key: "score", label: "Score" }, { key: "decision", label: "Decision" }, { key: "workflow_playbook", label: "Workflow" }, { key: "mitre_count", label: "MITRE" }, { key: "cve_count", label: "CVEs" }, { key: "created_at", label: "Time", render: (item) => formatDate(item.created_at) }]} rows={incidentState.items} /><Pagination page={casePage} total={incidentState.total} pageSize={casePageSize} onPageChange={setCasePage} onPageSizeChange={(value) => { setCasePage(1); setCasePageSize(value); }} /></section> : null}
-    {externalSection ? <section className="panel firebase-card page-panel"><PanelHeader eyebrow={activeNav.toUpperCase()} title={`${NAV_ITEMS.find((item) => item.id === activeNav)?.label || activeNav} workspace`} actions={<>{activeNav !== "wazuh" ? <><button className="ghost-button" onClick={() => syncSource(activeNav)} type="button">{busy === activeNav ? "Syncing..." : "Sync now"}</button><button className="send-btn" onClick={() => { if (activeNav === "misp") setShowCreateMisp(true); else if (activeNav === "cortex") setShowCreateCortex(true); else if (activeNav === "iris") setShowCreateIris(true); }} style={{ height: "36px", padding: "0 1rem", borderRadius: "8px" }} type="button">Create New</button></> : null}<label className="filter-inline">Severity<select value={sectionState[activeNav].severity} onChange={(event) => updateSection(activeNav, { severity: event.target.value, page: 1 })}><option value="">All</option><option value="critical">Critical</option><option value="high">High</option><option value="medium">Medium</option><option value="low">Low</option></select></label></>} /><DataTable columns={[{ key: "source_id", label: "Source ID" }, { key: "title", label: "Title", render: (item) => <button className="inline-link" onClick={() => setSelectedExternal({ title: item.title, payload: item.raw_payload, type: activeNav })} type="button">{item.title}</button> }, { key: "severity", label: "Severity", render: (item) => <span className={`severity-pill ${severityTone(item.severity)}`}>{item.severity}</span> }, { key: "created_at", label: "Time", render: (item) => formatDate(item.created_at) }]} rows={sectionState[activeNav].items} empty={`No ${activeNav} data available yet.`} /><Pagination page={sectionState[activeNav].page} total={sectionState[activeNav].total} pageSize={sectionState[activeNav].pageSize} onPageChange={(value) => updateSection(activeNav, { page: value })} onPageSizeChange={(value) => updateSection(activeNav, { page: 1, pageSize: value })} /></section> : null}
+        {activeNav === "overview" ? <>
+          <section className="overview-grid overview-primary-grid">
+            <article className="panel firebase-card hero-panel">
+              <div className="hero-header"><div><p className="eyebrow">Risk movement</p><h3>Total Incident Pressure</h3></div><div className="hero-switches"></div></div>
+              <TrendChart points={scoreSeries} labels={scoreLabels} items={incidentState.items} />
+            </article>
+            <article className="panel firebase-card summary-stack">
+              <PanelHeader eyebrow="Response" title="Containment posture" />
+              <div style={{ flex: 1, display: "grid", placeItems: "center" }}><RingChart value={coverageValue} label="Intel coverage" /></div>
+            </article>
+          </section>
+          <section className="overview-grid overview-secondary-grid" style={{ gridTemplateColumns: "1.4fr 1fr 1fr" }}>
+            <article className="panel firebase-card heatmap-panel"><PanelHeader eyebrow="Intensity map" title="Operational map" /><HeatmapCard items={incidentState.items} /></article>
+            <article className="panel firebase-card"><PanelHeader eyebrow="Targeting" title="Top targeted assets" /><TopTargetAssetsCard items={incidentState.items} /></article>
+            <article className="panel firebase-card"><PanelHeader eyebrow="Distribution" title="Pipeline load" /><SourceBars items={sourcePulse} /></article>
+          </section>
+          <section className="panel firebase-card page-panel">
+            <PanelHeader eyebrow="Recent incidents" title="Latest response cases" actions={<button className="ghost-button" onClick={() => setActiveNav("incidents")} type="button">Open incident desk</button>} />
+            <DataTable columns={[{ key: "case_name", label: "Incident", render: (item) => <button className="inline-link" onClick={() => openCase(item.id)} type="button">{item.case_name}</button> }, { key: "severity", label: "Severity", render: (item) => <span className={`severity-pill ${severityTone(item.severity)}`}>{item.severity}</span> }, { key: "score", label: "Score" }, { key: "decision", label: "Decision" }, { key: "workflow_playbook", label: "Workflow" }, { key: "created_at", label: "Time", render: (item) => formatDate(item.created_at) }]} rows={incidentState.items} />
+          </section>
+        </> : null}
 
-    {activeNav === "mitre" ? <section className="panel firebase-card page-panel"><PanelHeader eyebrow="MITRE" title="MITRE ATT&CK coverage map" actions={<label className="filter-inline grow">Search<input value={sectionState.mitre.search} onChange={(event) => updateSection("mitre", { search: event.target.value, page: 1 })} placeholder="Tactic, technique, ID" /></label>} /><DataTable columns={[{ key: "external_id", label: "Technique" }, { key: "name", label: "Name", render: (item) => <button className="inline-link" onClick={() => setSelectedMitre(item)} type="button">{item.name}</button> }, { key: "tactics", label: "Tactics", render: (item) => item.tactics.join(", ") || "-" }, { key: "platforms", label: "Platforms", render: (item) => item.platforms.join(", ") || "-" }]} rows={sectionState.mitre.items} /><Pagination page={sectionState.mitre.page} total={sectionState.mitre.total} pageSize={sectionState.mitre.pageSize} onPageChange={(value) => updateSection("mitre", { page: value })} onPageSizeChange={(value) => updateSection("mitre", { page: 1, pageSize: value })} /></section> : null}
-    {activeNav === "cves" ? <section className="panel firebase-card page-panel"><PanelHeader eyebrow="Intelligence" title="CVE Vulnerability database" actions={<><button className="ghost-button" onClick={() => syncSource("cves", 1000)} type="button">{busy === "cves" ? "Syncing..." : "Sync 1000"}</button><button className="ghost-button" onClick={() => syncSource("cves", 3000)} type="button">{busy === "cves" ? "Deep Syncing..." : "Sync 3000"}</button><div className="mini-badge">{cves.total} entries</div></>} /><DataTable columns={[{ key: "id", label: "CVE ID", render: (item) => <strong style={{ color: "var(--accent-primary)" }}>{item.cve_id}</strong> }, { key: "severity", label: "Severity", render: (item) => <span className={`severity-pill ${severityTone(item.severity)}`}>{item.severity}</span> }, { key: "cvss", label: "CVSS", render: (item) => item.cvss || "N/A" }, { key: "summary", label: "Description", render: (item) => <div style={{ fontSize: "0.85rem", color: "var(--muted)", maxWidth: "500px", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }} title={item.summary}>{item.summary}</div> }, { key: "published", label: "Published", render: (item) => formatDate(item.published) }]} rows={cves.items} empty="No CVE data synchronized." /><Pagination page={cvePage} total={cves.total} pageSize={cvePageSize} onPageChange={setCvePage} onPageSizeChange={(value) => { setCvePage(1); setCvePageSize(value); }} /></section> : null}
+        {activeNav === "incidents" ? <section className="panel firebase-card page-panel">
+          <PanelHeader eyebrow="Incidents" title="Realtime incident management" actions={<>
+            <label className="filter-inline">Severity<select value={caseFilters.severity} onChange={(event) => setCaseFilters((current) => ({ ...current, severity: event.target.value }))}><option value="">All</option><option value="critical">Critical</option><option value="high">High</option><option value="medium">Medium</option><option value="low">Low</option></select></label>
+            <label className="filter-inline">Decision<select value={caseFilters.decision} onChange={(event) => setCaseFilters((current) => ({ ...current, decision: event.target.value }))}><option value="">All</option><option value="stop">Stop</option><option value="review">Review</option><option value="continue">Continue</option></select></label>
+            <label className="filter-inline">Score<input value={caseFilters.minScore} onChange={(event) => setCaseFilters((current) => ({ ...current, minScore: event.target.value }))} placeholder="Min" /></label>
+            <label className="filter-inline grow">Search<input value={caseFilters.search} onChange={(event) => setCaseFilters((current) => ({ ...current, search: event.target.value }))} placeholder="Case, IRIS, asset" /></label>
+          </>} />
+          <DataTable columns={[{ key: "case_name", label: "Incident", render: (item) => <button className="inline-link" onClick={() => openCase(item.id)} type="button">{item.case_name}</button> }, { key: "severity", label: "Severity", render: (item) => <span className={`severity-pill ${severityTone(item.severity)}`}>{item.severity}</span> }, { key: "score", label: "Score" }, { key: "decision", label: "Decision" }, { key: "workflow_playbook", label: "Workflow" }, { key: "mitre_count", label: "MITRE" }, { key: "cve_count", label: "CVEs" }, { key: "created_at", label: "Time", render: (item) => formatDate(item.created_at) }]} rows={incidentState.items} />
+          <Pagination page={casePage} total={incidentState.total} pageSize={casePageSize} onPageChange={setCasePage} onPageSizeChange={(value) => { setCasePage(1); setCasePageSize(value); }} />
+        </section> : null}
 
-    {activeNav === "discussion" ? <section className="panel firebase-card page-panel discussion-panel premium-chat hubspot-shell"><div className="chat-interface"><header className="hubspot-chat-header"><div className="header-left"><h3>H-Brain Analysis</h3><Icon name="chevron" /><span className="badge-pill private-badge"><Icon name="lock" />Private</span></div><div className="header-right"></div></header><div className="chat-thread hubspot-thread" ref={chatScrollRef} onScroll={(event) => { const node = event.currentTarget; autoScrollRef.current = node.scrollHeight - node.scrollTop - node.clientHeight < 48; }}><div className="chat-content-container">{chatMessages.map((message, index) => {
-      const isAssistant = message.role === "assistant";
-      let thought = null;
-      let answer = message.content;
-      if (isAssistant) {
-        const match = message.content.match(/<thought>([\s\S]*?)<\/thought>/);
-        if (match) {
-          thought = match[1].trim();
-          answer = message.content.replace(/<thought>[\s\S]*?<\/thought>/, "").trim();
-        }
-      }
-      return <article key={`${message.role}-${index}`} className={`message-row hubspot-row ${message.role}`}><div className="message-avatar">{isAssistant && <img src={LOGO_URL} alt="H-Brain" />}</div><div className="message-body">{thought ? <div className="hubspot-analysis-block"><button className="analysis-pill"><Icon name="pulse" />Analysis steps<Icon name="chevron-right" /></button><div className="connected-chips"><span className="data-chip"><Icon name="intel" />IOC Database</span><span className="data-chip"><Icon name="file" />Incident_Report.pdf</span></div></div> : null}<div className="message-text">{renderFormatted(answer)}</div></div>{!isAssistant && <div className="user-initials">AS</div>}</article>;
-    })}{busy === "chat" ? <article className="message-row hubspot-row assistant loading"><div className="message-avatar"><img src={LOGO_URL} alt="H-Brain" /></div><div className="message-body"><div className="hubspot-analysis-block"><button className="analysis-pill pulsing"><Icon name="pulse" />Analyzing SOC telemetry...</button></div><div className="shimmering-bar" /></div></article> : null}</div></div><div className="hubspot-input-container"><div className="input-tag-row"><span className="input-tag">H-Brain by <a href="https://hanicar.tn" style={{ textDecoration: "none", color: "white" }}>Hanicar Security</a></span></div><form className="hubspot-input-pill" onSubmit={handleChatSubmit}><textarea value={chatDraft} onChange={(event) => setChatDraft(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); handleChatSubmit(event); } }} placeholder="Ask H-Brain Security Assistant..." /><div className="hubspot-toolbar"><div className="toolbar-left"><button type="button" className="tool-circle"><Icon name="plus" /></button><button type="button" className="content-assistant-badge">Security Assistant <small>Beta</small></button><button type="button" className="tool-icon"><Icon name="search" /></button></div><div className="toolbar-right"><button type="button" className="tool-icon"><Icon name="mic" /></button><button type="submit" className="hubspot-send-btn" disabled={busy === "chat" || !chatDraft.trim()}><Icon name="arrow-up" /></button></div></div></form></div></div></section> : null}
+        {externalSection ? <section className="panel firebase-card page-panel">
+          <PanelHeader eyebrow={activeNav.toUpperCase()} title={`${NAV_ITEMS.find((item) => item.id === activeNav)?.label || activeNav} workspace`} actions={<>
+            {activeNav !== "wazuh" ? <>
+              <button className="ghost-button" onClick={() => syncSource(activeNav)} type="button">{busy === activeNav ? "Syncing..." : "Sync now"}</button>
+              <button className="send-btn" onClick={() => { if (activeNav === "misp") setShowCreateMisp(true); else if (activeNav === "cortex") setShowCreateCortex(true); else if (activeNav === "iris") setShowCreateIris(true); }} style={{ height: "36px", padding: "0 1rem", borderRadius: "8px" }} type="button">Create New</button>
+            </> : null}
+            <label className="filter-inline">Severity<select value={sectionState[activeNav].severity} onChange={(event) => updateSection(activeNav, { severity: event.target.value, page: 1 })}><option value="">All</option><option value="critical">Critical</option><option value="high">High</option><option value="medium">Medium</option><option value="low">Low</option></select></label>
+          </>} />
+          <DataTable columns={[{ key: "source_id", label: "Source ID" }, { key: "title", label: "Title", render: (item) => <button className="inline-link" onClick={() => setSelectedExternal({ title: item.title, payload: item.raw_payload, type: activeNav })} type="button">{item.title}</button> }, { key: "severity", label: "Severity", render: (item) => <span className={`severity-pill ${severityTone(item.severity)}`}>{item.severity}</span> }, { key: "created_at", label: "Time", render: (item) => formatDate(item.created_at) }]} rows={sectionState[activeNav].items} empty={`No ${activeNav} data available yet.`} />
+          <Pagination page={sectionState[activeNav].page} total={sectionState[activeNav].total} pageSize={sectionState[activeNav].pageSize} onPageChange={(value) => updateSection(activeNav, { page: value })} onPageSizeChange={(value) => updateSection(activeNav, { page: 1, pageSize: value })} />
+        </section> : null}
 
-    {activeNav === "settings" ? <section className="panel firebase-card page-panel"><PanelHeader eyebrow="Settings" title="Connector and operator configuration" /><form className="settings-grid" onSubmit={saveSettings}><label>Dashboard Email<input value={settingsForm.dashboard_email} onChange={(event) => setSettingsForm((current) => ({ ...current, dashboard_email: event.target.value }))} /></label><label>Notification Email<input value={settingsForm.notification_email} onChange={(event) => setSettingsForm((current) => ({ ...current, notification_email: event.target.value }))} /></label><label>MISP URL<input value={settingsForm.misp_base_url} onChange={(event) => setSettingsForm((current) => ({ ...current, misp_base_url: event.target.value }))} /></label><label>MISP API Key<input value={settingsForm.misp_api_key} onChange={(event) => setSettingsForm((current) => ({ ...current, misp_api_key: event.target.value }))} /></label><label>Cortex URL<input value={settingsForm.cortex_base_url} onChange={(event) => setSettingsForm((current) => ({ ...current, cortex_base_url: event.target.value }))} /></label><label>Cortex API Key<input value={settingsForm.cortex_api_key} onChange={(event) => setSettingsForm((current) => ({ ...current, cortex_api_key: event.target.value }))} /></label><label>IRIS URL<input value={settingsForm.iris_base_url} onChange={(event) => setSettingsForm((current) => ({ ...current, iris_base_url: event.target.value }))} /></label><label>IRIS API Key<input value={settingsForm.iris_api_key} onChange={(event) => setSettingsForm((current) => ({ ...current, iris_api_key: event.target.value }))} /></label><label>Ollama Base URL<input value={settingsForm.ollama_base_url} onChange={(event) => setSettingsForm((current) => ({ ...current, ollama_base_url: event.target.value }))} /></label><label>Ollama Model<input value={settingsForm.ollama_model} onChange={(event) => setSettingsForm((current) => ({ ...current, ollama_model: event.target.value }))} /></label><label>Current Password<input type="password" value={settingsForm.current_password} onChange={(event) => setSettingsForm((current) => ({ ...current, current_password: event.target.value }))} /></label><label>New Password<input type="password" value={settingsForm.new_password} onChange={(event) => setSettingsForm((current) => ({ ...current, new_password: event.target.value }))} /></label><div className="settings-actions"><button type="submit">{busy === "settings" ? "Saving..." : "Save configuration"}</button><div className="settings-hint"><span>Stored in database</span><strong>Wazuh remains HTTP-ingest only</strong></div></div></form></section> : null}
-  </main>{selectedCase ? <div className="modal-shell" onClick={() => setSelectedCase(null)}><div className="modal-card modal-card-wide" onClick={(event) => event.stopPropagation()}><PanelHeader eyebrow={`${selectedCase.severity.toUpperCase()} · ${selectedCase.score}/100 · ${selectedCase.decision.toUpperCase()}`} title={selectedCase.case_name} actions={<button className="ghost-button" onClick={() => setSelectedCase(null)} type="button">Close</button>} /><p className="lede">{selectedCase.summary}</p><div className="summary-grid"><div><span>Asset</span><strong>{selectedCase.asset_name}</strong></div><div><span>IRIS Case</span><strong>{selectedCase.iris_case_name || "Not linked"}</strong></div><div><span>Workflow</span><strong>{selectedCase.workflow_playbook}</strong></div><div><span>Score Model</span><strong>{selectedCase.score_model}</strong></div></div><AISummaryPanel data={selectedCase.result_payload?.compliance_recommendation} caseData={selectedCase} /><ComplianceRecommendationPanel data={selectedCase.result_payload?.compliance_recommendation} caseData={selectedCase} /><PKIMetricsPanel data={selectedCase.result_payload?.pki_metrics} /><DetailsBlock title="Full Response JSON" value={selectedCase.result_payload || {}} /><DetailsBlock title="Recommendation Body" value={selectedCase.recommendation_body} open /><DetailsBlock title="MISP Event" value={selectedCase.raw_payload?.misp_event || {}} /><DetailsBlock title="Wazuh Alert" value={selectedCase.raw_payload?.wazuh_alert || {}} /><DetailsBlock title="Cortex Analysis" value={selectedCase.raw_payload?.cortex_analysis || {}} /><DetailsBlock title="MITRE ATT&CK" value={selectedCase.mitre_attacks || []} /><DetailsBlock title="CVEs" value={selectedCase.cves || []} /><DetailsBlock title="IOCs" value={selectedCase.iocs || []} /><DetailsBlock title="PKIs" value={selectedCase.pkis || []} /><DetailsBlock title="Email Payload" value={selectedCase.email_payload || {}} /><DetailsBlock title="Normalized Request" value={selectedCase.normalized_payload || {}} /></div></div> : null}{selectedExternal ? <div className="modal-shell" onClick={() => setSelectedExternal(null)}><div className="modal-card" onClick={(event) => event.stopPropagation()}><PanelHeader eyebrow={selectedExternal.type.toUpperCase()} title={selectedExternal.title} actions={<button className="ghost-button" onClick={() => setSelectedExternal(null)} type="button">Close</button>} /><DetailsBlock title="Raw Payload" value={selectedExternal.payload} open /></div></div> : null}{selectedMitre ? <div className="modal-shell" onClick={() => setSelectedMitre(null)}><div className="modal-card" onClick={(event) => event.stopPropagation()}><PanelHeader eyebrow={selectedMitre.external_id} title={selectedMitre.name} actions={<button className="ghost-button" onClick={() => setSelectedMitre(null)} type="button">Close</button>} /><p className="lede">{selectedMitre.description}</p><div className="summary-grid"><div><span>Tactics</span><strong>{selectedMitre.tactics.join(", ") || "-"}</strong></div><div><span>Platforms</span><strong>{selectedMitre.platforms.join(", ") || "-"}</strong></div><div><span>Reference</span><strong>{selectedMitre.url || "-"}</strong></div></div><DetailsBlock title="Detection Guidance" value={selectedMitre.detection || "No detection guidance available."} open /></div></div> : null}
-    {showCreateMisp && <div className="modal-shell" onClick={() => setShowCreateMisp(false)}><div className="modal-card" onClick={(event) => event.stopPropagation()}><PanelHeader eyebrow="MISP" title="Create Threat Intel Event" actions={<button className="ghost-button" onClick={() => setShowCreateMisp(false)} type="button">Cancel</button>} /><form className="settings-grid" style={{ marginTop: "1rem" }} onSubmit={(e) => { e.preventDefault(); handleCreateEntity("misp"); }}><label>Event Information (Title)<input value={createForm.title} onChange={(e) => setCreateForm(c => ({ ...c, title: e.target.value }))} required /></label><label>Threat Level<select value={createForm.severity} onChange={(e) => setCreateForm(c => ({ ...c, severity: e.target.value }))}><option value="1">1 - High</option><option value="2">2 - Medium</option><option value="3">3 - Low</option><option value="4">4 - Undefined</option></select></label><div className="settings-actions"><button type="submit">{busy === "misp" ? "Creating..." : "Create Event"}</button></div></form></div></div>}
-    {showCreateCortex && <div className="modal-shell" onClick={() => setShowCreateCortex(false)}><div className="modal-card" onClick={(event) => event.stopPropagation()}><PanelHeader eyebrow="CORTEX" title="Run External Analysis" actions={<button className="ghost-button" onClick={() => setShowCreateCortex(false)} type="button">Cancel</button>} /><form className="settings-grid" style={{ marginTop: "1rem" }} onSubmit={(e) => { e.preventDefault(); handleCreateEntity("cortex"); }}><label>Analyzer ID<input value={createForm.analyzer_id} onChange={(e) => setCreateForm(c => ({ ...c, analyzer_id: e.target.value }))} required /></label><label>Data Type<select value={createForm.data_type} onChange={(e) => setCreateForm(c => ({ ...c, data_type: e.target.value }))}><option value="ip">IP Address</option><option value="domain">Domain</option><option value="hash">File Hash</option><option value="url">URL</option></select></label><label style={{ gridColumn: "1 / -1" }}>Observable Data<input value={createForm.data} onChange={(e) => setCreateForm(c => ({ ...c, data: e.target.value }))} placeholder="e.g. 8.8.8.8" required /></label><div className="settings-actions"><button type="submit">{busy === "cortex" ? "Analyzing..." : "Run Job"}</button></div></form></div></div>}
-    {showCreateIris && <div className="modal-shell" onClick={() => setShowCreateIris(false)}><div className="modal-card" onClick={(event) => event.stopPropagation()}><PanelHeader eyebrow="IRIS" title="Open Forensic Case" actions={<button className="ghost-button" onClick={() => setShowCreateIris(false)} type="button">Cancel</button>} /><form className="settings-grid" style={{ marginTop: "1rem" }} onSubmit={(e) => { e.preventDefault(); handleCreateEntity("iris"); }}><label>Case Title<input value={createForm.title} onChange={(e) => setCreateForm(c => ({ ...c, title: e.target.value }))} required /></label><label>Severity ID<select value={createForm.severity} onChange={(e) => setCreateForm(c => ({ ...c, severity: e.target.value }))}><option value="1">1 - Critical</option><option value="2">2 - High</option><option value="3">3 - Medium</option><option value="4">4 - Low</option></select></label><label style={{ gridColumn: "1 / -1" }}>Description<textarea value={createForm.description} onChange={(e) => setCreateForm(c => ({ ...c, description: e.target.value }))} /></label><div className="settings-actions"><button type="submit">{busy === "iris" ? "Opening..." : "Create Case"}</button></div></form></div></div>}
-  </div>;
+        {activeNav === "mitre" ? <section className="panel firebase-card page-panel">
+          <PanelHeader eyebrow="MITRE" title="MITRE ATT&CK coverage map" actions={<label className="filter-inline grow">Search<input value={sectionState.mitre.search} onChange={(event) => updateSection("mitre", { search: event.target.value, page: 1 })} placeholder="Tactic, technique, ID" /></label>} />
+          <DataTable columns={[{ key: "external_id", label: "Technique" }, { key: "name", label: "Name", render: (item) => <button className="inline-link" onClick={() => setSelectedMitre(item)} type="button">{item.name}</button> }, { key: "tactics", label: "Tactics", render: (item) => item.tactics.join(", ") || "-" }, { key: "platforms", label: "Platforms", render: (item) => item.platforms.join(", ") || "-" }]} rows={sectionState.mitre.items} />
+          <Pagination page={sectionState.mitre.page} total={sectionState.mitre.total} pageSize={sectionState.mitre.pageSize} onPageChange={(value) => updateSection("mitre", { page: value })} onPageSizeChange={(value) => updateSection("mitre", { page: 1, pageSize: value })} />
+        </section> : null}
+
+        {activeNav === "cves" ? <section className="panel firebase-card page-panel">
+          <PanelHeader eyebrow="Intelligence" title="CVE Vulnerability database" actions={<>
+            <button className="ghost-button" onClick={() => syncSource("cves", 1000)} type="button">{busy === "cves" ? "Syncing..." : "Sync 1000"}</button>
+            <button className="ghost-button" onClick={() => syncSource("cves", 3000)} type="button">{busy === "cves" ? "Deep Syncing..." : "Sync 3000"}</button>
+            <div className="mini-badge">{cves.total} entries</div>
+          </>} />
+          <DataTable columns={[{ key: "id", label: "CVE ID", render: (item) => <strong style={{ color: "var(--accent-primary)" }}>{item.cve_id}</strong> }, { key: "severity", label: "Severity", render: (item) => <span className={`severity-pill ${severityTone(item.severity)}`}>{item.severity}</span> }, { key: "cvss", label: "CVSS", render: (item) => item.cvss || "N/A" }, { key: "summary", label: "Description", render: (item) => <div style={{ fontSize: "0.85rem", color: "var(--muted)", maxWidth: "500px", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }} title={item.summary}>{item.summary}</div> }, { key: "published", label: "Published", render: (item) => formatDate(item.published) }]} rows={cves.items} empty="No CVE data synchronized." />
+          <Pagination page={cvePage} total={cves.total} pageSize={cvePageSize} onPageChange={setCvePage} onPageSizeChange={(value) => { setCvePage(1); setCvePageSize(value); }} />
+        </section> : null}
+
+        {activeNav === "discussion" ? <section className="panel firebase-card page-panel discussion-panel premium-chat hubspot-shell">
+          <div className="chat-interface">
+            <header className="hubspot-chat-header">
+              <div className="header-left"><h3>H-Brain Analysis</h3><Icon name="chevron" /><span className="badge-pill private-badge"><Icon name="lock" />Private</span></div>
+              <div className="header-right"></div>
+            </header>
+            <div className="chat-thread hubspot-thread" ref={chatScrollRef} onScroll={(event) => { const node = event.currentTarget; autoScrollRef.current = node.scrollHeight - node.scrollTop - node.clientHeight < 48; }}>
+              <div className="chat-content-container">
+                {chatMessages.map((message, index) => {
+                  const isAssistant = message.role === "assistant";
+                  let thought = null;
+                  let answer = message.content;
+                  if (isAssistant) {
+                    const match = message.content.match(/<thought>([\s\S]*?)<\/thought>/);
+                    if (match) {
+                      thought = match[1].trim();
+                      answer = message.content.replace(/<thought>[\s\S]*?<\/thought>/, "").trim();
+                    }
+                  }
+                  return <article key={`${message.role}-${index}`} className={`message-row hubspot-row ${message.role}`}>
+                    <div className="message-avatar">{isAssistant && <img src={LOGO_URL} alt="H-Brain" />}</div>
+                    <div className="message-body">
+                      {thought ? <div className="hubspot-analysis-block">
+                        <button className="analysis-pill"><Icon name="pulse" />Analysis steps<Icon name="chevron-right" /></button>
+                        <div className="connected-chips"><span className="data-chip"><Icon name="intel" />IOC Database</span><span className="data-chip"><Icon name="file" />Incident_Report.pdf</span></div>
+                      </div> : null}
+                      <div className="message-text">{renderFormatted(answer)}</div>
+                    </div>
+                    {!isAssistant && <div className="user-initials">AS</div>}
+                  </article>;
+                })}
+                {busy === "chat" ? <article className="message-row hubspot-row assistant loading">
+                  <div className="message-avatar"><img src={LOGO_URL} alt="H-Brain" /></div>
+                  <div className="message-body">
+                    <div className="hubspot-analysis-block"><button className="analysis-pill pulsing"><Icon name="pulse" />Analyzing SOC telemetry...</button></div>
+                    <div className="shimmering-bar" />
+                  </div>
+                </article> : null}
+              </div>
+            </div>
+            <div className="hubspot-input-container">
+              <div className="input-tag-row"><span className="input-tag">H-Brain by <a href={COMPANY_URL} style={{ textDecoration: "none", color: "white" }}>Hanicar Security</a></span></div>
+              <form className="hubspot-input-pill" onSubmit={handleChatSubmit}>
+                <textarea value={chatDraft} onChange={(event) => setChatDraft(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); handleChatSubmit(event); } }} placeholder="Ask H-Brain Security Assistant..." />
+                <div className="hubspot-toolbar">
+                  <div className="toolbar-left">
+                    <button type="button" className="tool-circle"><Icon name="plus" /></button>
+                    <button type="button" className="content-assistant-badge">Security Assistant <small>Beta</small></button>
+                    <button type="button" className="tool-icon"><Icon name="search" /></button>
+                  </div>
+                  <div className="toolbar-right">
+                    <button type="button" className="tool-icon"><Icon name="mic" /></button>
+                    <button type="submit" className="hubspot-send-btn" disabled={busy === "chat" || !chatDraft.trim()}><Icon name="arrow-up" /></button>
+                  </div>
+                </div>
+              </form>
+            </div>
+          </div>
+        </section> : null}
+
+        {activeNav === "settings" ? <section className="panel firebase-card page-panel">
+          <PanelHeader eyebrow="Settings" title="Connector and operator configuration" />
+          <form className="settings-grid" onSubmit={saveSettings}>
+            <label>Dashboard Email<input value={settingsForm.dashboard_email} onChange={(event) => setSettingsForm((current) => ({ ...current, dashboard_email: event.target.value }))} /></label>
+            <label>Notification Email<input value={settingsForm.notification_email} onChange={(event) => setSettingsForm((current) => ({ ...current, notification_email: event.target.value }))} /></label>
+            <label>MISP URL<input value={settingsForm.misp_base_url} onChange={(event) => setSettingsForm((current) => ({ ...current, misp_base_url: event.target.value }))} /></label>
+            <label>MISP API Key<input value={settingsForm.misp_api_key} onChange={(event) => setSettingsForm((current) => ({ ...current, misp_api_key: event.target.value }))} /></label>
+            <label>Cortex URL<input value={settingsForm.cortex_base_url} onChange={(event) => setSettingsForm((current) => ({ ...current, cortex_base_url: event.target.value }))} /></label>
+            <label>Cortex API Key<input value={settingsForm.cortex_api_key} onChange={(event) => setSettingsForm((current) => ({ ...current, cortex_api_key: event.target.value }))} /></label>
+            <label>IRIS URL<input value={settingsForm.iris_base_url} onChange={(event) => setSettingsForm((current) => ({ ...current, iris_base_url: event.target.value }))} /></label>
+            <label>IRIS API Key<input value={settingsForm.iris_api_key} onChange={(event) => setSettingsForm((current) => ({ ...current, iris_api_key: event.target.value }))} /></label>
+            <label>Ollama Base URL<input value={settingsForm.ollama_base_url} onChange={(event) => setSettingsForm((current) => ({ ...current, ollama_base_url: event.target.value }))} /></label>
+            <label>Ollama Model<input value={settingsForm.ollama_model} onChange={(event) => setSettingsForm((current) => ({ ...current, ollama_model: event.target.value }))} /></label>
+            <label>Current Password<input type="password" value={settingsForm.current_password} onChange={(event) => setSettingsForm((current) => ({ ...current, current_password: event.target.value }))} /></label>
+            <label>New Password<input type="password" value={settingsForm.new_password} onChange={(event) => setSettingsForm((current) => ({ ...current, new_password: event.target.value }))} /></label>
+            <div className="settings-actions"><button type="submit">{busy === "settings" ? "Saving..." : "Save configuration"}</button><div className="settings-hint"><span>Stored in database</span><strong>Wazuh remains HTTP-ingest only</strong></div></div>
+          </form>
+        </section> : null}
+      </main>
+
+      {selectedCase ? <div className="modal-shell" onClick={() => setSelectedCase(null)}>
+        <div className="modal-card modal-card-wide" onClick={(event) => event.stopPropagation()}>
+          <PanelHeader eyebrow={`${selectedCase.severity.toUpperCase()} · ${selectedCase.score}/100 · ${selectedCase.decision.toUpperCase()}`} title={selectedCase.case_name} actions={<button className="ghost-button" onClick={() => setSelectedCase(null)} type="button">Close</button>} />
+          <p className="lede">{selectedCase.summary}</p>
+          <div className="summary-grid">
+            <div><span>Asset</span><strong>{selectedCase.asset_name}</strong></div>
+            <div><span>IRIS Case</span><strong>{selectedCase.iris_case_name || "Not linked"}</strong></div>
+            <div><span>Workflow</span><strong>{selectedCase.workflow_playbook}</strong></div>
+            <div><span>Score Model</span><strong>{selectedCase.score_model}</strong></div>
+          </div>
+          <AISummaryPanel data={selectedCase.result_payload?.compliance_recommendation} caseData={selectedCase} />
+          <ComplianceRecommendationPanel data={selectedCase.result_payload?.compliance_recommendation} caseData={selectedCase} />
+          <PKIMetricsPanel data={selectedCase.result_payload?.pki_metrics} />
+          <DetailsBlock title="Full Response JSON" value={selectedCase.result_payload || {}} />
+          <DetailsBlock title="Recommendation Body" value={selectedCase.recommendation_body} open />
+          <DetailsBlock title="MISP Event" value={selectedCase.raw_payload?.misp_event || {}} />
+          <DetailsBlock title="Wazuh Alert" value={selectedCase.raw_payload?.wazuh_alert || {}} />
+          <DetailsBlock title="Cortex Analysis" value={selectedCase.raw_payload?.cortex_analysis || {}} />
+          <DetailsBlock title="MITRE ATT&CK" value={selectedCase.mitre_attacks || []} />
+          <DetailsBlock title="CVEs" value={selectedCase.cves || []} />
+          <DetailsBlock title="IOCs" value={selectedCase.iocs || []} />
+          <DetailsBlock title="PKIs" value={selectedCase.pkis || []} />
+          <DetailsBlock title="Email Payload" value={selectedCase.email_payload || {}} />
+          <DetailsBlock title="Normalized Request" value={selectedCase.normalized_payload || {}} />
+        </div>
+      </div> : null}
+
+      {selectedExternal ? <div className="modal-shell" onClick={() => setSelectedExternal(null)}>
+        <div className="modal-card" onClick={(event) => event.stopPropagation()}>
+          <PanelHeader eyebrow={selectedExternal.type.toUpperCase()} title={selectedExternal.title} actions={<button className="ghost-button" onClick={() => setSelectedExternal(null)} type="button">Close</button>} />
+          <DetailsBlock title="Raw Payload" value={selectedExternal.payload} open />
+        </div>
+      </div> : null}
+
+      {selectedMitre ? <div className="modal-shell" onClick={() => setSelectedMitre(null)}>
+        <div className="modal-card" onClick={(event) => event.stopPropagation()}>
+          <PanelHeader eyebrow={selectedMitre.external_id} title={selectedMitre.name} actions={<button className="ghost-button" onClick={() => setSelectedMitre(null)} type="button">Close</button>} />
+          <p className="lede">{selectedMitre.description}</p>
+          <div className="summary-grid">
+            <div><span>Tactics</span><strong>{selectedMitre.tactics.join(", ") || "-"}</strong></div>
+            <div><span>Platforms</span><strong>{selectedMitre.platforms.join(", ") || "-"}</strong></div>
+            <div><span>Reference</span><strong>{selectedMitre.url || "-"}</strong></div>
+          </div>
+          <DetailsBlock title="Detection Guidance" value={selectedMitre.detection || "No detection guidance available."} open />
+        </div>
+      </div> : null}
+
+      {showCreateMisp && <div className="modal-shell" onClick={() => setShowCreateMisp(false)}>
+        <div className="modal-card" onClick={(event) => event.stopPropagation()}>
+          <PanelHeader eyebrow="MISP" title="Create Threat Intel Event" actions={<button className="ghost-button" onClick={() => setShowCreateMisp(false)} type="button">Cancel</button>} />
+          <form className="settings-grid" style={{ marginTop: "1rem" }} onSubmit={(e) => { e.preventDefault(); handleCreateEntity("misp"); }}>
+            <label>Event Information (Title)<input value={createForm.title} onChange={(e) => setCreateForm(c => ({ ...c, title: e.target.value }))} required /></label>
+            <label>Threat Level<select value={createForm.severity} onChange={(e) => setCreateForm(c => ({ ...c, severity: e.target.value }))}><option value="1">1 - High</option><option value="2">2 - Medium</option><option value="3">3 - Low</option><option value="4">4 - Undefined</option></select></label>
+            <div className="settings-actions"><button type="submit">{busy === "misp" ? "Creating..." : "Create Event"}</button></div>
+          </form>
+        </div>
+      </div>}
+
+      {showCreateCortex && <div className="modal-shell" onClick={() => setShowCreateCortex(false)}>
+        <div className="modal-card" onClick={(event) => event.stopPropagation()}>
+          <PanelHeader eyebrow="CORTEX" title="Run External Analysis" actions={<button className="ghost-button" onClick={() => setShowCreateCortex(false)} type="button">Cancel</button>} />
+          <form className="settings-grid" style={{ marginTop: "1rem" }} onSubmit={(e) => { e.preventDefault(); handleCreateEntity("cortex"); }}>
+            <label>Analyzer ID<input value={createForm.analyzer_id} onChange={(e) => setCreateForm(c => ({ ...c, analyzer_id: e.target.value }))} required /></label>
+            <label>Data Type<select value={createForm.data_type} onChange={(e) => setCreateForm(c => ({ ...c, data_type: e.target.value }))}><option value="ip">IP Address</option><option value="domain">Domain</option><option value="hash">File Hash</option><option value="url">URL</option></select></label>
+            <label style={{ gridColumn: "1 / -1" }}>Observable Data<input value={createForm.data} onChange={(e) => setCreateForm(c => ({ ...c, data: e.target.value }))} placeholder="e.g. 8.8.8.8" required /></label>
+            <div className="settings-actions"><button type="submit">{busy === "cortex" ? "Analyzing..." : "Run Job"}</button></div>
+          </form>
+        </div>
+      </div>}
+
+      {showCreateIris && <div className="modal-shell" onClick={() => setShowCreateIris(false)}>
+        <div className="modal-card" onClick={(event) => event.stopPropagation()}>
+          <PanelHeader eyebrow="IRIS" title="Open Forensic Case" actions={<button className="ghost-button" onClick={() => setShowCreateIris(false)} type="button">Cancel</button>} />
+          <form className="settings-grid" style={{ marginTop: "1rem" }} onSubmit={(e) => { e.preventDefault(); handleCreateEntity("iris"); }}>
+            <label>Case Title<input value={createForm.title} onChange={(e) => setCreateForm(c => ({ ...c, title: e.target.value }))} required /></label>
+            <label>Severity ID<select value={createForm.severity} onChange={(e) => setCreateForm(c => ({ ...c, severity: e.target.value }))}><option value="1">1 - Critical</option><option value="2">2 - High</option><option value="3">3 - Medium</option><option value="4">4 - Low</option></select></label>
+            <label style={{ gridColumn: "1 / -1" }}>Description<textarea value={createForm.description} onChange={(e) => setCreateForm(c => ({ ...c, description: e.target.value }))} /></label>
+            <div className="settings-actions"><button type="submit">{busy === "iris" ? "Opening..." : "Create Case"}</button></div>
+          </form>
+        </div>
+      </div>}
+    </div>
+  );
 }
 
 export default App;
