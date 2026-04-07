@@ -7,8 +7,6 @@ const mailBodyEl = document.getElementById("mail-body");
 const providerEl = document.getElementById("provider");
 const iocBodyEl = document.getElementById("ioc-body");
 const pkiBodyEl = document.getElementById("pki-body");
-const complianceEl = document.getElementById("compliance-body");
-const pkiMetricsEl = document.getElementById("pki-metrics-body");
 
 function splitCsv(value) {
   return value
@@ -85,6 +83,9 @@ function renderCompliance(data) {
   const section = document.getElementById("compliance-section");
   const header = document.getElementById("compliance-header");
   const content = document.getElementById("compliance-content");
+  const tabsContainer = document.getElementById("compliance-tabs");
+  
+  if (!section || !header || !content || !tabsContainer) return;
   
   if (!data) {
     section.style.display = "none";
@@ -97,8 +98,8 @@ function renderCompliance(data) {
   // Header
   const severityColor = severityColors[data.severity] || "var(--muted)";
   header.innerHTML = `
-    <span class="threat-name">${data.threat_category?.replace(/_/g, " ")}</span>
-    <span class="severity" style="color:${severityColor}; border: 1px solid ${severityColor}">${data.severity}</span>
+    <span class="threat-name">${data.threat_category?.replace(/_/g, " ") || "unknown"}</span>
+    <span class="severity" style="color:${severityColor}; border: 1px solid ${severityColor}">${data.severity || "unknown"}</span>
   `;
   
   // Tabs data
@@ -112,7 +113,6 @@ function renderCompliance(data) {
   ];
   
   // Render tabs
-  const tabsContainer = document.getElementById("compliance-tabs");
   tabsContainer.innerHTML = "";
   tabs.forEach((tab, i) => {
     const btn = document.createElement("button");
@@ -132,6 +132,7 @@ function renderCompliance(data) {
 
 function renderTabContent(tab) {
   const content = document.getElementById("compliance-content");
+  if (!content) return;
   if (tab.isList) {
     content.innerHTML = `<ol class="action-list">${tab.items.map(item => `<li>${item}</li>`).join("")}</ol>`;
   } else {
@@ -146,6 +147,8 @@ function renderPKIMetrics(data) {
   const section = document.getElementById("pki-metrics-section");
   const grid = document.getElementById("pki-metrics");
   
+  if (!section || !grid) return;
+  
   if (!data) {
     section.style.display = "none";
     return;
@@ -153,14 +156,14 @@ function renderPKIMetrics(data) {
   
   section.style.display = "block";
   const metrics = [
-    { label: "MTTD", value: `${data.mttd_minutes} min`, icon: "⏱️" },
-    { label: "MTDR", value: `${data.mtdr_minutes} min`, icon: "⏱️" },
-    { label: "MTTR", value: `${Math.round((data.mttd_minutes + data.mtdr_minutes) / 2)} min`, icon: "⏱️" },
-    { label: "Accuracy", value: `${(data.model_accuracy * 100).toFixed(1)}%`, icon: "🎯" },
-    { label: "Confidence", value: `${(data.classification_confidence * 100).toFixed(1)}%`, icon: "📊" },
-    { label: "IOCs", value: `${data.ioc_count}`, icon: "🔗" },
-    { label: "Malicious", value: `${data.malicious_signal_count}`, icon: "⚠️" },
-    { label: "Diversity", value: `${data.source_diversity_index}%`, icon: "🌐" },
+    { label: "MTTD", value: `${data.mttd_minutes || 0} min`, icon: "⏱️" },
+    { label: "MTDR", value: `${data.mtdr_minutes || 0} min`, icon: "⏱️" },
+    { label: "MTTR", value: `${Math.round(((data.mttd_minutes || 0) + (data.mtdr_minutes || 0)) / 2)} min`, icon: "⏱️" },
+    { label: "Accuracy", value: `${((data.model_accuracy || 0) * 100).toFixed(1)}%`, icon: "🎯" },
+    { label: "Confidence", value: `${((data.classification_confidence || 0) * 100).toFixed(1)}%`, icon: "📊" },
+    { label: "IOCs", value: `${data.ioc_count || 0}`, icon: "🔗" },
+    { label: "Malicious", value: `${data.malicious_signal_count || 0}`, icon: "⚠️" },
+    { label: "Diversity", value: `${data.source_diversity_index || 0}%`, icon: "🌐" },
   ];
   
   grid.innerHTML = metrics.map(m => `
@@ -173,27 +176,33 @@ function renderPKIMetrics(data) {
 }
 
 function renderResult(result, emailResult) {
-  decisionEl.textContent = result.decision.toUpperCase();
-  scorePillEl.textContent = result.score;
-  summaryEl.textContent = result.summary;
-  providerEl.textContent = `Recommendation engine: ${result.ai_provider}${result.ai_generated ? " (AI)" : " (fallback)"}`;
+  if (!decisionEl || !scorePillEl || !summaryEl || !providerEl) return;
+  
+  decisionEl.textContent = (result.decision || "unknown").toUpperCase();
+  scorePillEl.textContent = result.score || 0;
+  summaryEl.textContent = result.summary || "No summary available";
+  providerEl.textContent = `Recommendation engine: ${result.ai_provider || "rules fallback"}${result.ai_generated ? " (AI)" : ""}`;
 
   const tone =
     result.decision === "stop" ? "var(--danger)" : result.decision === "review" ? "var(--warn)" : "var(--accent)";
   scorePillEl.style.boxShadow = `0 0 0 6px color-mix(in srgb, ${tone} 16%, transparent)`;
   scorePillEl.style.color = tone;
 
-  breakdownEl.innerHTML = "";
-  result.breakdown.forEach((item) => {
-    const card = document.createElement("article");
-    card.className = "breakdown-card";
-    card.innerHTML = `<strong>${item.category}</strong><p>${item.score}/max contribution</p><p>${item.rationale}</p>`;
-    breakdownEl.appendChild(card);
-  });
+  if (breakdownEl) {
+    breakdownEl.innerHTML = "";
+    if (result.breakdown && result.breakdown.length) {
+      result.breakdown.forEach((item) => {
+        const card = document.createElement("article");
+        card.className = "breakdown-card";
+        card.innerHTML = `<strong>${item.category}</strong><p>${item.score}/max contribution</p><p>${item.rationale}</p>`;
+        breakdownEl.appendChild(card);
+      });
+    }
+  }
 
-  iocBodyEl.textContent = JSON.stringify(result.iocs || [], null, 2);
-  pkiBodyEl.textContent = JSON.stringify(result.pkis || [], null, 2);
-  mailBodyEl.textContent = emailResult.html;
+  if (iocBodyEl) iocBodyEl.textContent = JSON.stringify(result.iocs || [], null, 2);
+  if (pkiBodyEl) pkiBodyEl.textContent = JSON.stringify(result.pkis || [], null, 2);
+  if (mailBodyEl) mailBodyEl.textContent = emailResult?.html || result.recommendation_body || "No email content available";
   
   // Render new sections
   renderCompliance(result.compliance_recommendation);
