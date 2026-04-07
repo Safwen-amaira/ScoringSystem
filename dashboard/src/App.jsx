@@ -533,12 +533,12 @@ function App() {
     );
     const cf = data.compliance_framework || {};
     const tabs = [
-      { id: "immediate", label: "Immediate", icon: "\uD83D\uDEA8", color: "#ef4444" },
-      { id: "pci", label: "PCI DSS", icon: "\uD83D\uDCB3", color: "#10b981" },
-      { id: "mitre", label: "MITRE ATT&CK", icon: "\uD83C\uDFAF", color: "#f59e0b" },
-      { id: "iso", label: "ISO 27001", icon: "\uD83D\uDEE1\uFE0F", color: "#3b82f6" },
-      { id: "investigation", label: "Investigate", icon: "\uD83D\uDD0D", color: "#8b5cf6" },
-      { id: "remediation", label: "Remediate", icon: "\uD83D\uDD27", color: "#06b6d4" },
+      { id: "immediate", label: "Immediate", icon: "🚨", color: "#ef4444" },
+      { id: "pci", label: "PCI DSS", icon: "💳", color: "#10b981" },
+      { id: "mitre", label: "MITRE ATT&CK", icon: "🎯", color: "#f59e0b" },
+      { id: "iso", label: "ISO 27001", icon: "🛡️", color: "#3b82f6" },
+      { id: "investigation", label: "Investigate", icon: "🔍", color: "#8b5cf6" },
+      { id: "remediation", label: "Remediate", icon: "🔧", color: "#06b6d4" },
     ];
     return (
       <div style={{marginTop:"1rem", marginBottom:"1rem", background:"#12151a", borderRadius:"14px", border:"1px solid #2a3040", overflow:"hidden"}}>
@@ -562,12 +562,12 @@ function App() {
           ))}
         </div>
         <div style={{padding:"1rem 1.25rem"}}>
-          {activeTab === "immediate" && <RecommendationsTab title="Immediate Actions" icon="\uD83D\uDEA8" color="#ef4444" items={data.immediate_actions} />}
-          {activeTab === "pci" && <ComplianceTab label="PCI DSS v4.0 Controls" icon="\uD83D\uDCB3" color="#10b981" controls={cf.pci_dss_controls} />}
-          {activeTab === "mitre" && <ComplianceTab label="MITRE ATT&CK Mitigations" icon="\uD83C\uDFAF" color="#f59e0b" controls={cf.mitre_attck_mitigations} />}
-          {activeTab === "iso" && <ComplianceTab label="ISO 27001:2022 Controls" icon="\uD83D\uDEE1\uFE0F" color="#3b82f6" controls={cf.iso_27001_controls} />}
-          {activeTab === "investigation" && <RecommendationsTab title="Investigation Steps" icon="\uD83D\uDD0D" color="#8b5cf6" items={data.investigation_steps} />}
-          {activeTab === "remediation" && <RecommendationsTab title="Remediation Steps" icon="\uD83D\uDD27" color="#06b6d4" items={data.remediation_steps} />}
+          {activeTab === "immediate" && <RecommendationsTab title="Immediate Actions" icon="🚨" color="#ef4444" items={data.immediate_actions} />}
+          {activeTab === "pci" && <ComplianceTab label="PCI DSS v4.0 Controls" icon="💳" color="#10b981" controls={cf.pci_dss_controls} />}
+          {activeTab === "mitre" && <ComplianceTab label="MITRE ATT&CK Mitigations" icon="🎯" color="#f59e0b" controls={cf.mitre_attck_mitigations} />}
+          {activeTab === "iso" && <ComplianceTab label="ISO 27001:2022 Controls" icon="🛡️" color="#3b82f6" controls={cf.iso_27001_controls} />}
+          {activeTab === "investigation" && <RecommendationsTab title="Investigation Steps" icon="🔍" color="#8b5cf6" items={data.investigation_steps} />}
+          {activeTab === "remediation" && <RecommendationsTab title="Remediation Steps" icon="🔧" color="#06b6d4" items={data.remediation_steps} />}
         </div>
       </div>
     );
@@ -577,16 +577,16 @@ function App() {
   function PKIMetricsPanel({ data }) {
     if (!data) return null;
     const metrics = [
-      { label: "MTTD", value: `${data.mttd_minutes} min`, icon: "\u23F1\uFE0F", color: "#3b82f6" },
-      { label: "MTDR", value: `${data.mtdr_minutes} min`, icon: "\u23F1\uFE0F", color: "#10b981" },
-      { label: "MTTR", value: `${Math.round((data.mttd_minutes + data.mtdr_minutes) / 2)} min`, icon: "\u23F1\uFE0F", color: "#f59e0b" },
-      { label: "Model Accuracy", value: `${(data.model_accuracy * 100).toFixed(1)}%`, icon: "\uD83C\uDFAF", color: "#06b6d4" },
-      { label: "Confidence", value: `${(data.classification_confidence * 100).toFixed(1)}%`, icon: "\uD83D\uDCCA", color: "#8b5cf6" },
-      { label: "IOC Count", value: `${data.ioc_count}`, icon: "\uD83D\uDD17", color: "#ef4444" },
-      { label: "Malicious Signals", value: `${data.malicious_signal_count}`, icon: "\u26A0\uFE0F", color: "#ec4899" },
-      { label: "Source Diversity", value: `${data.source_diversity_index}%`, icon: "\uD83C\uDF10", color: "#14b8a6" },
-      { label: "High Confidence", value: `${data.high_confidence_case ? "Yes" : "No"}`, icon: "\u2705", color: data.high_confidence_case ? "#10b981" : "#6b7280" },
-      { label: "Triage Pressure", value: `${data.triage_pressure_index}`, icon: "\uD83D\uDD25", color: "#f97316" },
+      { label: "MTTD", value: `${data.mttd_minutes} min`, icon: "⏱️", color: "#3b82f6" },
+      { label: "MTDR", value: `${data.mtdr_minutes} min`, icon: "⏱️", color: "#10b981" },
+      { label: "MTTR", value: `${Math.round((data.mttd_minutes + data.mtdr_minutes) / 2)} min`, icon: "⏱️", color: "#f59e0b" },
+      { label: "Model Accuracy", value: `${(data.model_accuracy * 100).toFixed(1)}%`, icon: "🎯", color: "#06b6d4" },
+      { label: "Confidence", value: `${(data.classification_confidence * 100).toFixed(1)}%`, icon: "📊", color: "#8b5cf6" },
+      { label: "IOC Count", value: `${data.ioc_count}`, icon: "🔗", color: "#ef4444" },
+      { label: "Malicious Signals", value: `${data.malicious_signal_count}`, icon: "⚠️", color: "#ec4899" },
+      { label: "Source Diversity", value: `${data.source_diversity_index}%`, icon: "🌐", color: "#14b8a6" },
+      { label: "High Confidence", value: `${data.high_confidence_case ? "Yes" : "No"}`, icon: "✅", color: data.high_confidence_case ? "#10b981" : "#6b7280" },
+      { label: "Triage Pressure", value: `${data.triage_pressure_index}`, icon: "🔥", color: "#f97316" },
     ];
     return (
       <div style={{marginTop:"0.5rem", marginBottom:"1rem", padding:"1rem", background:"#12151a", borderRadius:"12px", border:"1px solid #2a3040"}}>
