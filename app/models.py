@@ -95,6 +95,7 @@ class RecommendationResponse(BaseModel):
     iocs: List[IOCItem]
     pkis: List[PKIMetric]
     compliance_recommendation: Optional[dict] = None
+    pki_metrics: Optional[dict] = None
 
 
 class ComplianceControl(BaseModel):

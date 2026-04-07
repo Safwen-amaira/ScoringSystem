@@ -232,8 +232,21 @@ def _email_payload(request: ScoringRequest, result: RecommendationResponse, comp
     )
 
 
-def _store_raw_case(raw_request: RawIntelligenceRequest, normalized_request: ScoringRequest, result: RecommendationResponse, cve_rows: list[dict]) -> int:
-    email_payload = _email_payload(normalized_request, result)
+def _store_raw_case(raw_request: RawIntelligenceRequest, normalized_request: ScoringRequest, result: RecommendationResponse, cve_rows: list[dict], iocs: list = None, pkis: list = None, score_resp: ScoreResponse = None) -> int:
+    # Enrich result with IOCs, PKIs, pki_metrics, and compliance_recommendation from ScoreResponse before storing
+    if iocs:
+        result.iocs = [ioc.model_dump() if hasattr(ioc, 'model_dump') else ioc for ioc in iocs]
+    if pkis:
+        result.pkis = [pki.model_dump() if hasattr(pki, 'model_dump') else pki for pki in pkis]
+    if score_resp:
+        # Store compliance recommendation as dict
+        if score_resp.compliance_recommendation:
+            result.compliance_recommendation = score_resp.compliance_recommendation.model_dump() if hasattr(score_resp.compliance_recommendation, 'model_dump') else score_resp.compliance_recommendation
+        # Store PKI metrics as dict
+        if score_resp.pki_metrics:
+            result.pki_metrics = score_resp.pki_metrics.model_dump() if hasattr(score_resp.pki_metrics, 'model_dump') else score_resp.pki_metrics
+    
+    email_payload = _email_payload(normalized_request, result, score_resp.compliance_recommendation if score_resp else None)
     if raw_request.wazuh_alert:
         store_wazuh_alert(
             source_id=str(raw_request.wazuh_alert.get("id") or raw_request.wazuh_alert.get("_id") or normalized_request.title),
@@ -293,7 +306,7 @@ def score(request: ScoringRequest) -> ScoreResponse:
 def get_recommendation(request: RawIntelligenceRequest) -> ScoreResponse:
     """Full ML-driven compliance recommendation with ISO 27001, PCI DSS, MITRE ATT&CK mappings."""
     normalized_request, result_dict, cve_rows = _normalize_raw(request)
-    _store_raw_case(request, normalized_request, result_dict["result"], cve_rows)
+    _store_raw_case(request, normalized_request, result_dict["result"], cve_rows, iocs=result_dict["iocs"], pkis=result_dict["pkis"], score_resp=result_dict["score_resp"])
     return result_dict["score_resp"]
 
 
@@ -327,7 +340,7 @@ def analyze(request: ScoringRequest) -> ScoreResponse:
 @app.post("/api/score/raw", response_model=ScoreResponse)
 def score_raw(request: RawIntelligenceRequest) -> ScoreResponse:
     normalized_request, result_dict, cve_rows = _normalize_raw(request)
-    _store_raw_case(request, normalized_request, result_dict["result"], cve_rows)
+    _store_raw_case(request, normalized_request, result_dict["result"], cve_rows, iocs=result_dict["iocs"], pkis=result_dict["pkis"], score_resp=result_dict["score_resp"])
     return result_dict["score_resp"]
 
 
@@ -335,7 +348,7 @@ def score_raw(request: RawIntelligenceRequest) -> ScoreResponse:
 def recommendation_raw(request: RawIntelligenceRequest) -> dict:
     """Full recommendation with compliance and PKI metrics for raw intelligence request."""
     normalized_request, result_dict, cve_rows = _normalize_raw(request)
-    _store_raw_case(request, normalized_request, result_dict["result"], cve_rows)
+    _store_raw_case(request, normalized_request, result_dict["result"], cve_rows, iocs=result_dict["iocs"], pkis=result_dict["pkis"], score_resp=result_dict["score_resp"])
     return {
         "recommendation": result_dict["result"].model_dump(),
         "compliance_recommendation": result_dict["compliance_rec"].model_dump(),
@@ -346,14 +359,14 @@ def recommendation_raw(request: RawIntelligenceRequest) -> dict:
 @app.post("/api/recommendation/email", response_model=EmailContentResponse)
 def recommendation_email(request: RawIntelligenceRequest) -> EmailContentResponse:
     normalized_request, result_dict, cve_rows = _normalize_raw(request)
-    _store_raw_case(request, normalized_request, result_dict["result"], cve_rows)
+    _store_raw_case(request, normalized_request, result_dict["result"], cve_rows, iocs=result_dict["iocs"], pkis=result_dict["pkis"], score_resp=result_dict["score_resp"])
     return _email_payload(normalized_request, result_dict["result"])
 
 
 @app.post("/api/intelligence/score-html", response_model=ScoreAndRecommendationHTMLResponse)
 def intelligence_score_html(request: RawIntelligenceRequest) -> ScoreAndRecommendationHTMLResponse:
     normalized_request, result_dict, cve_rows = _normalize_raw(request)
-    _store_raw_case(request, normalized_request, result_dict["result"], cve_rows)
+    _store_raw_case(request, normalized_request, result_dict["result"], cve_rows, iocs=result_dict["iocs"], pkis=result_dict["pkis"], score_resp=result_dict["score_resp"])
     return ScoreAndRecommendationHTMLResponse(
         score=result_dict["score_resp"],
         recommendation=result_dict["result"],
@@ -431,8 +444,8 @@ def api_dashboard_case(case_id: int, _: dict = Depends(_current_user)) -> Dashbo
 
 @app.post("/api/dashboard/cases/ingest", response_model=DashboardCaseDetail)
 def api_dashboard_ingest(request: RawIntelligenceRequest, _: dict = Depends(_current_user)) -> DashboardCaseDetail:
-    normalized_request, result, cve_rows = _normalize_raw(request)
-    case_id = _store_raw_case(request, normalized_request, result, cve_rows)
+    normalized_request, result_dict, cve_rows = _normalize_raw(request)
+    case_id = _store_raw_case(request, normalized_request, result_dict["result"], cve_rows, iocs=result_dict["iocs"], pkis=result_dict["pkis"], score_resp=result_dict["score_resp"])
     detail = get_case(case_id)
     if not detail:
         raise HTTPException(status_code=500, detail="Stored case could not be loaded")
@@ -504,8 +517,8 @@ def api_wazuh_alert_ingest(request: WazuhAlertIngestRequest) -> dict:
             notes=request.notes,
             source="wazuh",
         )
-        normalized_request, result, cve_rows = _normalize_raw(raw_request)
-        case_id = _store_raw_case(raw_request, normalized_request, result, cve_rows)
+        normalized_request, result_dict, cve_rows = _normalize_raw(raw_request)
+        case_id = _store_raw_case(raw_request, normalized_request, result_dict["result"], cve_rows, iocs=result_dict["iocs"], pkis=result_dict["pkis"], score_resp=result_dict["score_resp"])
     if severity in {"critical", "high"}:
         create_notification(case_id, f"Wazuh {severity} alert", severity, title)
     return {"status": "ok", "alert_id": alert_id, "case_id": case_id}
