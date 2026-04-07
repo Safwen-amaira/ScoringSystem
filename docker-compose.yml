@@ -2,7 +2,6 @@ services:
   threat-recommendation-engine:
     build: .
     container_name: threat-recommendation-engine
-    restart: unless-stopped
     ports:
       - "8000:8000"
     environment:
@@ -14,32 +13,55 @@ services:
       HANICAR_ADMIN_EMAIL: ${HANICAR_ADMIN_EMAIL:-admin@hanicar.tn}
       HANICAR_ADMIN_PASSWORD: ${HANICAR_ADMIN_PASSWORD:-bornasroot}
       HANICAR_DATA_DIR: ${HANICAR_DATA_DIR:-/app/data}
-      AI_PROVIDER: ${AI_PROVIDER:-file-agent}
+      AI_PROVIDER: ${AI_PROVIDER:-ollama}
       OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://ollama:11434}
       OLLAMA_MODEL: ${OLLAMA_MODEL:-qwen2.5:1.5b}
       AI_TIMEOUT_SECONDS: ${AI_TIMEOUT_SECONDS:-30}
     volumes:
       - hanicar_data:/app/data
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
+    depends_on:
+      ollama:
+        condition: service_healthy
+      ollama-init:
+        condition: service_completed_successfully
 
   hanicar-dashboard:
     build:
       context: ./dashboard
     container_name: hanicar-dashboard
-    restart: unless-stopped
     ports:
       - "5173:5173"
-    environment:
-      VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:8000}
     depends_on:
       threat-recommendation-engine:
+        condition: service_started
+
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+
+  ollama-init:
+    image: curlimages/curl:8.12.1
+    container_name: ollama-init
+    depends_on:
+      ollama:
         condition: service_healthy
+    entrypoint:
+      - sh
+      - -c
+      - |
+        curl -fsS -H 'Content-Type: application/json' http://ollama:11434/api/pull -d '{"name":"'"$${OLLAMA_MODEL:-qwen2.5:1.5b}"'","stream":false}'
+    environment:
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-qwen2.5:1.5b}
 
 volumes:
+  ollama_data:
   hanicar_data:
-    driver: local
